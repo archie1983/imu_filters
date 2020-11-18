@@ -149,17 +149,14 @@ class Imu {
     static Imu* getImu();
 
     /**
-     * A public static function to initialise the timer. Turns out that if we do this inside 
-     * the constructor of LineSensor, then our configuration gets overwritten later, because
-     * our instance is constructed before Arduino has initialised its stuff. So we have no
-     * choice but to call this function in the setup section of the main code.
+     * Call this from the setup loop to initialise the IMU sensors.
      */
-    static void reInitTimer(long freq);
+    static void initialiseIMU();
 
     /**
      * Take in a fresh reading for each initialised sensor.
      */
-    void updateAllInitialisedSensors();
+    void readAllAxis();
   private:
     /**
      * Private constructor because we only have 1 IMU which doesn't change.
@@ -186,16 +183,8 @@ class Imu {
      */
     float gyro_sensitivity_conversion_factor;
 
-    /**
-     * A function to initialise timer3 to perform the measurements.
-     */
-    static void initialiseTimer3(long desired_frequency);
-
-    /**
-     * This variable will store the actual frequency that the timer3 runs at to take measurements of lines sensors
-     * and calculcate the speed based on encoder counts.
-     */
-    static double current_measurement_frequency;
+    static volatile bool led_state;
+    static void toggle_led();
 };
 
 #endif
