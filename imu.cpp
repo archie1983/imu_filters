@@ -1,6 +1,8 @@
 #include "imu.h"
 #include <Wire.h>
 
+double Imu::current_measurement_frequency = 0.0;
+
 /**
  * Private constructor because we only have 1 IMU which doesn't change.
  */
@@ -17,6 +19,8 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   //imuHardware.enableDefault();
   reconfigureAcc(afss, aaaf, asr);
   reconfigureGyro(gfss, gsr);
+
+  initialiseTimer3(SENSOR_UPDATE_FREQUENCY);
 }
 
 /**

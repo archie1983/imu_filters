@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <LSM6.h>
+#include "pin_names_and_constants.h"
 
 /**
  * Class for IMU
