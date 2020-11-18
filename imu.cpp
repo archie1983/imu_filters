@@ -171,13 +171,13 @@ static void Imu::readAllAxis() {
     Serial.print(", ");
     Serial.print(getAy());
     Serial.print(", ");
-    Serial.print(getAz());
-    Serial.print(", ");
-    Serial.print(getGx());
-    Serial.print(", ");
-    Serial.print(getGy());
-    Serial.print(", ");
-    Serial.println(getGz());
+    Serial.println(getAz());
+//    Serial.print(", ");
+//    Serial.print(getGx());
+//    Serial.print(", ");
+//    Serial.print(getGy());
+//    Serial.print(", ");
+//    Serial.println(getGz());
   }
 }
 
@@ -196,6 +196,6 @@ void Imu::initialiseIMU() {
   Imu::imu = new Imu(Imu::AccFullScaleSelection::AFS_4, 
                           Imu::AccAntiAliasFilter::AA_50, 
                           Imu::AccSampleRate::ASR_125, 
-                          Imu::GyroFullScaleSelection::GFS_500, 
+                          Imu::GyroFullScaleSelection::GFS_2000, 
                           Imu::GyroSampleRate::GSR_104);
 }
