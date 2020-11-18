@@ -55,16 +55,16 @@ void Imu::reconfigureGyro(GyroFullScaleSelection fss, GyroSampleRate sr) {
       gyro_sensitivity_conversion_factor = 4.375;
       break;
     case GFS_250:
-      acc_sensitivity_conversion_factor = 8.75;
+      gyro_sensitivity_conversion_factor = 8.75;
       break;
     case GFS_500:
-      acc_sensitivity_conversion_factor = 17.5;
+      gyro_sensitivity_conversion_factor = 17.5;
       break;
     case GFS_1000:
-      acc_sensitivity_conversion_factor = 35;
+      gyro_sensitivity_conversion_factor = 35;
       break;
     case GFS_2000:
-      acc_sensitivity_conversion_factor = 70;
+      gyro_sensitivity_conversion_factor = 70;
       break;
   }
 }
@@ -196,6 +196,6 @@ void Imu::initialiseIMU() {
   Imu::imu = new Imu(Imu::AccFullScaleSelection::AFS_4, 
                           Imu::AccAntiAliasFilter::AA_50, 
                           Imu::AccSampleRate::ASR_125, 
-                          Imu::GyroFullScaleSelection::GFS_250, 
-                          Imu::GyroSampleRate::GSR_166k);
+                          Imu::GyroFullScaleSelection::GFS_500, 
+                          Imu::GyroSampleRate::GSR_104);
 }
