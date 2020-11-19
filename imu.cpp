@@ -25,10 +25,10 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
 /**
  * Changes the configuration of the IMU.
  */
-void Imu::reconfigureAcc(Imu::AccFullScaleSelection fss, Imu::AccAntiAliasFilter aaf, Imu::AccSampleRate sr) {
-  imuHardware->writeReg(LSM6::CTRL1_XL, (sr << 4) | (fss << 2) | (aaf));
+void Imu::reconfigureAcc(Imu::AccFullScaleSelection afss, Imu::AccAntiAliasFilter aaaf, Imu::AccSampleRate asr) {
+  imuHardware->writeReg(LSM6::CTRL1_XL, (asr << 4) | (afss << 2) | (aaaf));
 
-  switch (fss) {
+  switch (afss) {
     case AFS_2:
       acc_sensitivity_conversion_factor = 0.061;
       break;
@@ -47,10 +47,10 @@ void Imu::reconfigureAcc(Imu::AccFullScaleSelection fss, Imu::AccAntiAliasFilter
 /**
  * Changes the configuration of the Gyroscope.
  */
-void Imu::reconfigureGyro(GyroFullScaleSelection fss, GyroSampleRate sr) {
-  imuHardware->writeReg(LSM6::CTRL2_G, (sr << 4) | (fss << 1) | 0x0);
+void Imu::reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr) {
+  imuHardware->writeReg(LSM6::CTRL2_G, (gsr << 4) | (gfss << 1) | 0x0);
 
-  switch (fss) {
+  switch (gfss) {
     case GFS_125:
       gyro_sensitivity_conversion_factor = 4.375;
       break;
