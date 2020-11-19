@@ -190,12 +190,13 @@ void Imu::toggle_led() {
  * Call this from the setup loop to initialise the IMU sensors.
  */
 void Imu::initialiseIMU() {
-  pinMode(YELLOW_LED, OUTPUT);
-  //toggle_led();
-
-  Imu::imu = new Imu(Imu::AccFullScaleSelection::AFS_4, 
-                          Imu::AccAntiAliasFilter::AA_50, 
-                          Imu::AccSampleRate::ASR_125, 
-                          Imu::GyroFullScaleSelection::GFS_2000, 
-                          Imu::GyroSampleRate::GSR_104);
+  if (imu == NULL) {
+    pinMode(YELLOW_LED, OUTPUT);
+    //toggle_led();
+    imu = new Imu(Imu::AccFullScaleSelection::AFS_4, 
+                            Imu::AccAntiAliasFilter::AA_50, 
+                            Imu::AccSampleRate::ASR_125, 
+                            Imu::GyroFullScaleSelection::GFS_2000, 
+                            Imu::GyroSampleRate::GSR_104);
+  }
 }
