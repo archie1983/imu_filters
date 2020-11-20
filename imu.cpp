@@ -181,7 +181,7 @@ static void Imu::readAllAxis() {
   }
 }
 
-static float Imu::readAx() {
+float Imu::readAx() {
   if (imuHardware != NULL) {
     imuHardware->read();
     return getAx();

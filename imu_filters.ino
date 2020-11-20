@@ -69,7 +69,7 @@ void loop()
 //  Serial.println(imu.g.z);
   // Imu::getImu()->readAllAxis();
 
-    acceleration = (Imu::readAx() / 1000) * 9.80665;
+    acceleration = (Imu::getImu()->readAx() / 1000) * 9.80665;
     vel = vel + (time_difference / 1000) * acceleration;
     pos = pos + (time_difference / 1000) * vel;
 
