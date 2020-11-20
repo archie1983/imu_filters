@@ -157,6 +157,11 @@ class Imu {
      * Take in a fresh reading for each initialised sensor.
      */
     void readAllAxis();
+
+    /**
+     * Returns sensor data
+     */
+    float readAx();
   private:
     /**
      * Private constructor because we only have 1 IMU which doesn't change.
