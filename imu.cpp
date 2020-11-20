@@ -80,42 +80,72 @@ Imu* Imu::getImu() {
  * Returns Accelerometer's X axis value converted to mg.
  */
 float Imu::getAx() {
-  return imuHardware->a.x * acc_sensitivity_conversion_factor;
+  if (imuHardware != NULL) {
+    imuHardware->read();
+    return getAxRaw() * acc_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
 }
 
 /**
  * Returns Accelerometer's Y axis value converted to mg.
  */
 float Imu::getAy() {
-  return imuHardware->a.y * acc_sensitivity_conversion_factor;
+  if (imuHardware != NULL) {
+    imuHardware->read();
+    return getAyRaw() * acc_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
 }
 
 /**
  * Returns Accelerometer's Z axis value converted to mg.
  */
 float Imu::getAz() {
-return imuHardware->a.z * acc_sensitivity_conversion_factor;
+  if (imuHardware != NULL) {
+    imuHardware->read();
+    return getAzRaw() * acc_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
 }
 
 /**
  * Returns Gyroscope's X axis value converted to mdps.
  */
 float Imu::getGx() {
-  return imuHardware->g.x * gyro_sensitivity_conversion_factor;
+  if (imuHardware != NULL) {
+    imuHardware->read();
+    return getGxRaw() * gyro_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
 }
 
 /**
  * Returns Gyroscope's Y axis value converted to mdps.
  */
 float Imu::getGy() {
-  return imuHardware->g.y * gyro_sensitivity_conversion_factor;
+  if (imuHardware != NULL) {
+    imuHardware->read();
+    return getGyRaw() * gyro_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
 }
 
 /**
  * Returns Gyroscope's Z axis value converted to mdps.
  */
 float Imu::getGz() {
-  return imuHardware->g.z * gyro_sensitivity_conversion_factor;
+  if (imuHardware != NULL) {
+    imuHardware->read();
+    return getGzRaw() * gyro_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
 }
 
 /**
@@ -165,20 +195,17 @@ float Imu::getGzRaw() {
  */
 static void Imu::readAllAxis() {
   toggle_led();
-  if (imuHardware != NULL) {
-    imuHardware->read();
-    Serial.print(getAx());
-    Serial.print(", ");
-    Serial.print(getAy());
-    Serial.print(", ");
-    Serial.println(getAz());
+  Serial.print(getAx());
+  Serial.print(", ");
+  Serial.print(getAy());
+  Serial.print(", ");
+  Serial.println(getAz());
 //    Serial.print(", ");
 //    Serial.print(getGx());
 //    Serial.print(", ");
 //    Serial.print(getGy());
 //    Serial.print(", ");
 //    Serial.println(getGz());
-  }
 }
 
 void Imu::toggle_led() {
