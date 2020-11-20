@@ -1,13 +1,13 @@
 #include "imu.h"
 #include <Wire.h>
 
-volatile bool Imu::led_state = false;
+bool Imu::led_state = false;
 Imu* Imu::imu = NULL; //# for now set this to NULL. We'll initialise it when initialiseIMU() is called.
 
 /**
- * Private constructor because we only have 1 IMU which doesn't change.
- */
-Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr, GyroFullScaleSelection gfss, GyroSampleRate gsr) {  
+   Private constructor because we only have 1 IMU which doesn't change.
+*/
+Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr, GyroFullScaleSelection gfss, GyroSampleRate gsr) {
   imuHardware = new LSM6();
   Wire.begin();
 
@@ -20,14 +20,24 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   imuHardware->enableDefault();
   reconfigureAcc(afss, aaaf, asr);
   reconfigureGyro(gfss, gsr);
+
+  time_since_last_read = 0;
+  acc_refresh_time_us = US_IN_1_S;
+  gyro_refresh_time_us = US_IN_1_S;
+
+  totalGx = 0;
+  gXZero = 0;
 }
 
 /**
- * Changes the configuration of the IMU.
- */
+   Changes the configuration of the IMU.
+*/
 void Imu::reconfigureAcc(Imu::AccFullScaleSelection afss, Imu::AccAntiAliasFilter aaaf, Imu::AccSampleRate asr) {
   imuHardware->writeReg(LSM6::CTRL1_XL, (asr << 4) | (afss << 2) | (aaaf));
 
+  /**
+   * Choose accelerometer conversion factor
+   */
   switch (afss) {
     case AFS_2:
       acc_sensitivity_conversion_factor = 0.061;
@@ -42,11 +52,18 @@ void Imu::reconfigureAcc(Imu::AccFullScaleSelection afss, Imu::AccAntiAliasFilte
       acc_sensitivity_conversion_factor = 0.488;
       break;
   }
+
+  /**
+   * Choose refresh time.
+   */
+  if (getAccRefreshRate(asr) < acc_refresh_time_us) {
+    acc_refresh_time_us = getAccRefreshRate(asr);
+  }
 }
 
 /**
- * Changes the configuration of the Gyroscope.
- */
+   Changes the configuration of the Gyroscope.
+*/
 void Imu::reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr) {
   imuHardware->writeReg(LSM6::CTRL2_G, (gsr << 4) | (gfss << 1) | 0x0);
 
@@ -67,21 +84,108 @@ void Imu::reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr) {
       gyro_sensitivity_conversion_factor = 70;
       break;
   }
+
+  /**
+   * Choose refresh time.
+   */
+  if (getGyroRefreshRate(gsr) < gyro_refresh_time_us) {
+    gyro_refresh_time_us = getGyroRefreshRate(gsr);
+  }
 }
 
 /**
- * Static getter for this class
+ * Returns how much time we can allow between measurement updates.
  */
+unsigned int Imu::getAccRefreshRate(AccSampleRate asr) {
+  unsigned int tmp_refresh_time_us = 0;
+  switch (asr) {
+    case ASR_OFF:
+      tmp_refresh_time_us = US_IN_1_S;
+      break;
+    case ASR_125:
+      tmp_refresh_time_us = US_IN_1_S / 12.5; //# for 12.5Hz we need to divide 1s worth of us into 12.5 chunks.
+      break;
+    case ASR_26:
+      tmp_refresh_time_us = US_IN_1_S / 26.0; //# for 26Hz we need to divide 1s worth of us into 26 chunks.
+      break;
+    case ASR_52:
+      tmp_refresh_time_us = US_IN_1_S / 52.0; //# for 52Hz we need to divide 1s worth of us into 52 chunks.
+      break;
+    case ASR_104:
+      tmp_refresh_time_us = US_IN_1_S / 104.0; //# for 104Hz we need to divide 1s worth of us into 104 chunks.
+      break;
+    case ASR_208:
+      tmp_refresh_time_us = US_IN_1_S / 208.0; //# for 208Hz we need to divide 1s worth of us into 208 chunks.
+      break;
+    case ASR_416:
+      tmp_refresh_time_us = US_IN_1_S / 416.0; //# for 416Hz we need to divide 1s worth of us into 416 chunks.
+      break;
+    case ASR_833:
+      tmp_refresh_time_us = US_IN_1_S / 833.0; //# for 833Hz we need to divide 1s worth of us into 833 chunks.
+      break;
+    case ASR_166k:
+      tmp_refresh_time_us = US_IN_1_S / 1660.0; //# for 1.66kHz we need to divide 1s worth of us into 1660 chunks.
+      break;
+    case ASR_333k:
+      tmp_refresh_time_us = US_IN_1_S / 3330.0; //# for 3.33Hz we need to divide 1s worth of us into 3330 chunks.
+      break;
+    case ASR_666k:
+      tmp_refresh_time_us = US_IN_1_S / 6660.0; //# for 6.66kHz we need to divide 1s worth of us into 6660 chunks.
+      break;
+  }
+  return tmp_refresh_time_us;
+}
+
+/**
+ * Returns how much time we can allow between measurement updates.
+ */
+unsigned int Imu::getGyroRefreshRate(GyroSampleRate gsr) {
+  unsigned int tmp_refresh_time_us = 0;
+  switch (gsr) {
+    case GSR_OFF:
+      tmp_refresh_time_us = US_IN_1_S;
+      break;
+    case GSR_125:
+      tmp_refresh_time_us = US_IN_1_S / 12.5; //# for 12.5Hz we need to divide 1s worth of us into 12.5 chunks.
+      break;
+    case GSR_26:
+      tmp_refresh_time_us = US_IN_1_S / 26.0; //# for 26Hz we need to divide 1s worth of us into 26 chunks.
+      break;
+    case GSR_52:
+      tmp_refresh_time_us = US_IN_1_S / 52.0; //# for 52Hz we need to divide 1s worth of us into 52 chunks.
+      break;
+    case GSR_104:
+      tmp_refresh_time_us = US_IN_1_S / 104.0; //# for 104Hz we need to divide 1s worth of us into 104 chunks.
+      break;
+    case GSR_208:
+      tmp_refresh_time_us = US_IN_1_S / 208.0; //# for 208Hz we need to divide 1s worth of us into 208 chunks.
+      break;
+    case GSR_416:
+      tmp_refresh_time_us = US_IN_1_S / 416.0; //# for 416Hz we need to divide 1s worth of us into 416 chunks.
+      break;
+    case GSR_833:
+      tmp_refresh_time_us = US_IN_1_S / 833.0; //# for 833Hz we need to divide 1s worth of us into 833 chunks.
+      break;
+    case GSR_166k:
+      tmp_refresh_time_us = US_IN_1_S / 1660.0; //# for 1.66kHz we need to divide 1s worth of us into 1660 chunks.
+      break;
+  }
+  return tmp_refresh_time_us;
+}
+
+/**
+   Static getter for this class
+*/
 Imu* Imu::getImu() {
   return imu;
 }
 
 /**
- * Returns Accelerometer's X axis value converted to mg.
- */
+   Returns Accelerometer's X axis value converted to mg.
+*/
 float Imu::getAx() {
   if (imuHardware != NULL) {
-    imuHardware->read();
+    readSensorIfNeeded();
     return getAxRaw() * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
@@ -89,11 +193,11 @@ float Imu::getAx() {
 }
 
 /**
- * Returns Accelerometer's Y axis value converted to mg.
- */
+   Returns Accelerometer's Y axis value converted to mg.
+*/
 float Imu::getAy() {
   if (imuHardware != NULL) {
-    imuHardware->read();
+    readSensorIfNeeded();
     return getAyRaw() * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
@@ -101,11 +205,11 @@ float Imu::getAy() {
 }
 
 /**
- * Returns Accelerometer's Z axis value converted to mg.
- */
+   Returns Accelerometer's Z axis value converted to mg.
+*/
 float Imu::getAz() {
   if (imuHardware != NULL) {
-    imuHardware->read();
+    readSensorIfNeeded();
     return getAzRaw() * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
@@ -113,23 +217,23 @@ float Imu::getAz() {
 }
 
 /**
- * Returns Gyroscope's X axis value converted to mdps.
- */
+   Returns Gyroscope's X axis value converted to mdps.
+*/
 float Imu::getGx() {
   if (imuHardware != NULL) {
-    imuHardware->read();
-    return getGxRaw() * gyro_sensitivity_conversion_factor;
+    readSensorIfNeeded();
+    return getGxRaw() * gyro_sensitivity_conversion_factor - gXZero;
   } else {
     return 0.;
   }
 }
 
 /**
- * Returns Gyroscope's Y axis value converted to mdps.
- */
+   Returns Gyroscope's Y axis value converted to mdps.
+*/
 float Imu::getGy() {
   if (imuHardware != NULL) {
-    imuHardware->read();
+    readSensorIfNeeded();
     return getGyRaw() * gyro_sensitivity_conversion_factor;
   } else {
     return 0.;
@@ -137,58 +241,78 @@ float Imu::getGy() {
 }
 
 /**
- * Returns Gyroscope's Z axis value converted to mdps.
- */
+   Returns Gyroscope's Z axis value converted to mdps.
+*/
 float Imu::getGz() {
-  if (imuHardware != NULL) {
-    imuHardware->read();
-    return getGzRaw() * gyro_sensitivity_conversion_factor;
-  } else {
-    return 0.;
-  }
+//  if (imuHardware != NULL) {
+//    readSensorIfNeeded();
+//    return (getGzRaw() * gyro_sensitivity_conversion_factor) - gZZero;
+//  } else {
+//    return 0.;
+//  }
+
+//We needed to read the Gz reading every 100 milliseconds and the readSensorIfNeeded();
+// had a updating time of 1 second
+imuHardware->read();
+return (getGzRaw() * gyro_sensitivity_conversion_factor) - gZZero;
+
 }
 
 /**
- * Returns Accelerometer's X axis value raw.
- */
+   Returns Accelerometer's X axis value raw.
+*/
 float Imu::getAxRaw() {
   return imuHardware->a.x;
 }
 
 /**
- * Returns Accelerometer's Y axis value raw.
- */
+   Returns Accelerometer's Y axis value raw.
+*/
 float Imu::getAyRaw() {
   return imuHardware->a.y;
 }
 
 /**
- * Returns Accelerometer's Z axis value raw.
- */
+   Returns Accelerometer's Z axis value raw.
+*/
 float Imu::getAzRaw() {
-return imuHardware->a.z;
+  return imuHardware->a.z;
 }
 
 /**
- * Returns Gyroscope's X axis value raw.
- */
+   Returns Gyroscope's X axis value raw.
+*/
 float Imu::getGxRaw() {
   return imuHardware->g.x;
 }
 
 /**
- * Returns Gyroscope's Y axis value raw.
- */
+   Returns Gyroscope's Y axis value raw.
+*/
 float Imu::getGyRaw() {
   return imuHardware->g.y;
 }
 
 /**
- * Returns Gyroscope's Z axis value raw.
- */
+   Returns Gyroscope's Z axis value raw.
+*/
 float Imu::getGzRaw() {
   return imuHardware->g.z;
 }
+
+/**
+<<<<<<< HEAD
+ * Reads the sensor via I2C bus if the time since last read has been long enough.
+ */
+void Imu::readSensorIfNeeded() {
+  /**
+   * If our hardware is not NULL and either gyro or accelerometer is due for a read, then read.
+   */
+  if (imuHardware != NULL && (micros() - time_since_last_read > acc_refresh_time_us || micros() - time_since_last_read > gyro_refresh_time_us)) {
+    imuHardware->read();
+    time_since_last_read = micros();
+  }
+}\
 
 /**
  * Take in a fresh reading for each initialised sensor.
@@ -200,12 +324,19 @@ static void Imu::readAllAxis() {
   Serial.print(getAy());
   Serial.print(", ");
   Serial.println(getAz());
-//    Serial.print(", ");
-//    Serial.print(getGx());
-//    Serial.print(", ");
-//    Serial.print(getGy());
-//    Serial.print(", ");
-//    Serial.println(getGz());
+  Serial.print(", ");
+  Serial.print(getGx());
+  Serial.print(", ");
+  Serial.print(getGy());
+  Serial.print(", ");
+  Serial.println(getGz());
+}
+
+float Imu::readAx() {
+  if (imuHardware != NULL) {
+    imuHardware->read();
+    return getAx();
+  }
 }
 
 void Imu::toggle_led() {
@@ -213,17 +344,51 @@ void Imu::toggle_led() {
   led_state = !led_state;
 }
 
+void Imu::calibrateGx() {
+  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
+  {
+    imuHardware->read();
+//    imuHardware->g.x * gyro_sensitivity_conversion_factor;
+    delay(1);
+  }
+  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
+  {
+    imuHardware->read();
+    totalGx += imuHardware->g.x * gyro_sensitivity_conversion_factor;
+    delay(1);
+  }
+  gXZero = totalGx / CALIBRATION_ITERATIONS;
+}
+
+
+
+void Imu::calibrateGz() {
+  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
+  {
+    imuHardware->read();
+//    imuHardware->g.z * gyro_sensitivity_conversion_factor;
+    delay(1);
+  }
+  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
+  {
+    imuHardware->read();
+    totalGz += imuHardware->g.z * gyro_sensitivity_conversion_factor;
+    delay(1);
+  }
+  gZZero = totalGz / CALIBRATION_ITERATIONS;
+}
+
 /**
- * Call this from the setup loop to initialise the IMU sensors.
- */
+   Call this from the setup loop to initialise the IMU sensors.
+*/
 void Imu::initialiseIMU() {
   if (imu == NULL) {
     pinMode(YELLOW_LED, OUTPUT);
     //toggle_led();
-    imu = new Imu(Imu::AccFullScaleSelection::AFS_4, 
-                            Imu::AccAntiAliasFilter::AA_50, 
-                            Imu::AccSampleRate::ASR_125, 
-                            Imu::GyroFullScaleSelection::GFS_2000, 
-                            Imu::GyroSampleRate::GSR_104);
+    imu = new Imu(Imu::AccFullScaleSelection::AFS_4,
+                  Imu::AccAntiAliasFilter::AA_50,
+                  Imu::AccSampleRate::ASR_125,
+                  Imu::GyroFullScaleSelection::GFS_2000,
+                  Imu::GyroSampleRate::GSR_104);
   }
 }
