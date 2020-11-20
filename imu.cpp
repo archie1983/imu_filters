@@ -326,6 +326,13 @@ static void Imu::readAllAxis() {
   Serial.println(getGz());
 }
 
+float Imu::readAx() {
+  if (imuHardware != NULL) {
+    imuHardware->read();
+    return getAx();
+  }
+}
+
 void Imu::toggle_led() {
   digitalWrite(YELLOW_LED, led_state);
   led_state = !led_state;
