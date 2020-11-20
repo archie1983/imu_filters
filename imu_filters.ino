@@ -48,6 +48,7 @@ void loop()
 //  Serial.print(" ");
 //  Serial.println(imu.g.z);
   Imu::getImu()->readAllAxis();
+  Serial.print(Imu::getImu()->getGx());
 
   delay(100);
 }
