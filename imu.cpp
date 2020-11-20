@@ -5,9 +5,9 @@ volatile bool Imu::led_state = false;
 Imu* Imu::imu = NULL; //# for now set this to NULL. We'll initialise it when initialiseIMU() is called.
 
 /**
- * Private constructor because we only have 1 IMU which doesn't change.
- */
-Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr, GyroFullScaleSelection gfss, GyroSampleRate gsr) {  
+   Private constructor because we only have 1 IMU which doesn't change.
+*/
+Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr, GyroFullScaleSelection gfss, GyroSampleRate gsr) {
   imuHardware = new LSM6();
   Wire.begin();
 
@@ -20,11 +20,14 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   imuHardware->enableDefault();
   reconfigureAcc(afss, aaaf, asr);
   reconfigureGyro(gfss, gsr);
+
+  totalGx = 0;
+  gXZero = 0;
 }
 
 /**
- * Changes the configuration of the IMU.
- */
+   Changes the configuration of the IMU.
+*/
 void Imu::reconfigureAcc(Imu::AccFullScaleSelection afss, Imu::AccAntiAliasFilter aaaf, Imu::AccSampleRate asr) {
   imuHardware->writeReg(LSM6::CTRL1_XL, (asr << 4) | (afss << 2) | (aaaf));
 
@@ -45,8 +48,8 @@ void Imu::reconfigureAcc(Imu::AccFullScaleSelection afss, Imu::AccAntiAliasFilte
 }
 
 /**
- * Changes the configuration of the Gyroscope.
- */
+   Changes the configuration of the Gyroscope.
+*/
 void Imu::reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr) {
   imuHardware->writeReg(LSM6::CTRL2_G, (gsr << 4) | (gfss << 1) | 0x0);
 
@@ -70,99 +73,102 @@ void Imu::reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr) {
 }
 
 /**
- * Static getter for this class
- */
+   Static getter for this class
+*/
 Imu* Imu::getImu() {
   return imu;
 }
 
 /**
- * Returns Accelerometer's X axis value converted to mg.
- */
+   Returns Accelerometer's X axis value converted to mg.
+*/
 float Imu::getAx() {
   return imuHardware->a.x * acc_sensitivity_conversion_factor;
 }
 
 /**
- * Returns Accelerometer's Y axis value converted to mg.
- */
+   Returns Accelerometer's Y axis value converted to mg.
+*/
 float Imu::getAy() {
   return imuHardware->a.y * acc_sensitivity_conversion_factor;
 }
 
 /**
- * Returns Accelerometer's Z axis value converted to mg.
- */
+   Returns Accelerometer's Z axis value converted to mg.
+*/
 float Imu::getAz() {
-return imuHardware->a.z * acc_sensitivity_conversion_factor;
+  return imuHardware->a.z * acc_sensitivity_conversion_factor;
 }
 
 /**
- * Returns Gyroscope's X axis value converted to mdps.
- */
+   Returns Gyroscope's X axis value converted to mdps.
+*/
 float Imu::getGx() {
-  return imuHardware->g.x * gyro_sensitivity_conversion_factor;
+//  Serial.print("gXZero: ");
+//  Serial.println(gXZero);
+  imuHardware->read();
+  return (imuHardware->g.x * gyro_sensitivity_conversion_factor - gXZero);
 }
 
 /**
- * Returns Gyroscope's Y axis value converted to mdps.
- */
+   Returns Gyroscope's Y axis value converted to mdps.
+*/
 float Imu::getGy() {
   return imuHardware->g.y * gyro_sensitivity_conversion_factor;
 }
 
 /**
- * Returns Gyroscope's Z axis value converted to mdps.
- */
+   Returns Gyroscope's Z axis value converted to mdps.
+*/
 float Imu::getGz() {
   return imuHardware->g.z * gyro_sensitivity_conversion_factor;
 }
 
 /**
- * Returns Accelerometer's X axis value raw.
- */
+   Returns Accelerometer's X axis value raw.
+*/
 float Imu::getAxRaw() {
   return imuHardware->a.x;
 }
 
 /**
- * Returns Accelerometer's Y axis value raw.
- */
+   Returns Accelerometer's Y axis value raw.
+*/
 float Imu::getAyRaw() {
   return imuHardware->a.y;
 }
 
 /**
- * Returns Accelerometer's Z axis value raw.
- */
+   Returns Accelerometer's Z axis value raw.
+*/
 float Imu::getAzRaw() {
-return imuHardware->a.z;
+  return imuHardware->a.z;
 }
 
 /**
- * Returns Gyroscope's X axis value raw.
- */
+   Returns Gyroscope's X axis value raw.
+*/
 float Imu::getGxRaw() {
   return imuHardware->g.x;
 }
 
 /**
- * Returns Gyroscope's Y axis value raw.
- */
+   Returns Gyroscope's Y axis value raw.
+*/
 float Imu::getGyRaw() {
   return imuHardware->g.y;
 }
 
 /**
- * Returns Gyroscope's Z axis value raw.
- */
+   Returns Gyroscope's Z axis value raw.
+*/
 float Imu::getGzRaw() {
   return imuHardware->g.z;
 }
 
 /**
- * Take in a fresh reading for each initialised sensor.
- */
+   Take in a fresh reading for each initialised sensor.
+*/
 static void Imu::readAllAxis() {
   toggle_led();
   if (imuHardware != NULL) {
@@ -172,12 +178,12 @@ static void Imu::readAllAxis() {
     Serial.print(getAy());
     Serial.print(", ");
     Serial.println(getAz());
-//    Serial.print(", ");
-//    Serial.print(getGx());
-//    Serial.print(", ");
-//    Serial.print(getGy());
-//    Serial.print(", ");
-//    Serial.println(getGz());
+    //    Serial.print(", ");
+    //    Serial.print(getGx());
+    //    Serial.print(", ");
+    //    Serial.print(getGy());
+    //    Serial.print(", ");
+    //    Serial.println(getGz());
   }
 }
 
@@ -186,17 +192,33 @@ void Imu::toggle_led() {
   led_state = !led_state;
 }
 
+void Imu::calibrateGx() {
+  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
+  {
+    imuHardware->read();
+//    imuHardware->g.x * gyro_sensitivity_conversion_factor;
+    delay(1);
+  }
+  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
+  {
+    imuHardware->read();
+    totalGx += imuHardware->g.x * gyro_sensitivity_conversion_factor;
+    delay(1);
+  }
+  gXZero = totalGx / CALIBRATION_ITERATIONS;
+}
+
 /**
- * Call this from the setup loop to initialise the IMU sensors.
- */
+   Call this from the setup loop to initialise the IMU sensors.
+*/
 void Imu::initialiseIMU() {
   if (imu == NULL) {
     pinMode(YELLOW_LED, OUTPUT);
     //toggle_led();
-    imu = new Imu(Imu::AccFullScaleSelection::AFS_4, 
-                            Imu::AccAntiAliasFilter::AA_50, 
-                            Imu::AccSampleRate::ASR_125, 
-                            Imu::GyroFullScaleSelection::GFS_2000, 
-                            Imu::GyroSampleRate::GSR_104);
+    imu = new Imu(Imu::AccFullScaleSelection::AFS_4,
+                  Imu::AccAntiAliasFilter::AA_50,
+                  Imu::AccSampleRate::ASR_125,
+                  Imu::GyroFullScaleSelection::GFS_2000,
+                  Imu::GyroSampleRate::GSR_104);
   }
 }

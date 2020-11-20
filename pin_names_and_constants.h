@@ -2,14 +2,14 @@
 #define _PIN_NAMES_
 
 /**
- * This class will serve as a central point for all pin definitions
- * and constants.
- */
+   This class will serve as a central point for all pin definitions
+   and constants.
+*/
 #define SENSOR_UPDATE_FREQUENCY 25 //# how fast we want our sensors updated.
-
+#define CALIBRATION_ITERATIONS 100
 /**
- * LED
- */
+   LED
+*/
 #define YELLOW_LED 13
 
 #endif

@@ -6,13 +6,13 @@
 #include "pin_names_and_constants.h"
 
 /**
- * Class for IMU
- */
+   Class for IMU
+*/
 class Imu {
   public:
     /**
-     * Linear accelerometer sensitivity modes (full scale selection).
-     */
+       Linear accelerometer sensitivity modes (full scale selection).
+    */
     enum AccFullScaleSelection {
       AFS_2 = 0b00, //# full scale is +-2g
       AFS_4 = 0b10, //# full scale is +-4g
@@ -21,8 +21,8 @@ class Imu {
     };
 
     /**
-     * Anti-aliasing filter bandwidth selection.
-     */
+       Anti-aliasing filter bandwidth selection.
+    */
     enum AccAntiAliasFilter {
       AA_400 = 0b00, //# Anti-aliasing filter bandwidth = 400Hz
       AA_200 = 0b01, //# Anti-aliasing filter bandwidth = 200Hz
@@ -31,8 +31,8 @@ class Imu {
     };
 
     /**
-     * Sample rate.
-     */
+       Sample rate.
+    */
     enum AccSampleRate {
       ASR_OFF = 0b0000, //# Sensor is off
       ASR_125 = 0b0001, //# Output data rate is 12.5Hz
@@ -48,8 +48,8 @@ class Imu {
     };
 
     /**
-     * Gyroscope sensitivity modes (full scale selection).
-     */
+       Gyroscope sensitivity modes (full scale selection).
+    */
     enum GyroFullScaleSelection {
       GFS_125 =  0b001,     //# full rotation speed is 125 degrees per second
       GFS_250 =  0b000,  //# full rotation speed is 250 degrees per second
@@ -59,8 +59,8 @@ class Imu {
     };
 
     /**
-     * Gyroscope Sample rate.
-     */
+       Gyroscope Sample rate.
+    */
     enum GyroSampleRate {
       GSR_OFF = 0b0000, //# Sensor is off
       GSR_125 = 0b0001, //# Output data rate is 12.5Hz
@@ -74,117 +74,125 @@ class Imu {
     };
 
     /**
-     * Changes the configuration of the Accelerometer.
-     */
+       Changes the configuration of the Accelerometer.
+    */
     void reconfigureAcc(AccFullScaleSelection fss, AccAntiAliasFilter aaf, AccSampleRate sr);
 
     /**
-     * Changes the configuration of the Gyroscope.
-     */
+       Changes the configuration of the Gyroscope.
+    */
     void reconfigureGyro(GyroFullScaleSelection fss, GyroSampleRate sr);
 
     /**
-     * Returns Accelerometer's X axis value converted to mg.
-     */
+       Returns Accelerometer's X axis value converted to mg.
+    */
     float getAx();
 
     /**
-     * Returns Accelerometer's Y axis value converted to mg.
-     */
+       Returns Accelerometer's Y axis value converted to mg.
+    */
     float getAy();
 
     /**
-     * Returns Accelerometer's Z axis value converted to mg.
-     */
+       Returns Accelerometer's Z axis value converted to mg.
+    */
     float getAz();
 
     /**
-     * Returns Gyroscope's X axis value converted to mdps.
-     */
+       Returns Gyroscope's X axis value converted to mdps.
+    */
     float getGx();
 
     /**
-     * Returns Gyroscope's Y axis value converted to mdps.
-     */
+       Returns Gyroscope's Y axis value converted to mdps.
+    */
     float getGy();
 
     /**
-     * Returns Gyroscope's Z axis value converted to mdps.
-     */
+       Returns Gyroscope's Z axis value converted to mdps.
+    */
     float getGz();
 
     /**
-     * Returns Accelerometer's X axis value raw.
-     */
+       Returns Accelerometer's X axis value raw.
+    */
     float getAxRaw();
 
     /**
-     * Returns Accelerometer's Y axis value raw.
-     */
+       Returns Accelerometer's Y axis value raw.
+    */
     float getAyRaw();
 
     /**
-     * Returns Accelerometer's Z axis value raw.
-     */
+       Returns Accelerometer's Z axis value raw.
+    */
     float getAzRaw();
 
     /**
-     * Returns Gyroscope's X axis value raw.
-     */
+       Returns Gyroscope's X axis value raw.
+    */
     float getGxRaw();
 
     /**
-     * Returns Gyroscope's Y axis value raw.
-     */
+       Returns Gyroscope's Y axis value raw.
+    */
     float getGyRaw();
 
     /**
-     * Returns Gyroscope's Z axis value raw.
-     */
+       Returns Gyroscope's Z axis value raw.
+    */
     float getGzRaw();
 
     /**
-     * Static getter for this class
-     */
+       Static getter for this class
+    */
     static Imu* getImu();
 
     /**
-     * Call this from the setup loop to initialise the IMU sensors.
-     */
+       Call this from the setup loop to initialise the IMU sensors.
+    */
     static void initialiseIMU();
 
     /**
-     * Take in a fresh reading for each initialised sensor.
-     */
+       Take in a fresh reading for each initialised sensor.
+    */
     void readAllAxis();
+
+    /**
+       Take in a fresh reading for each initialised sensor.
+    */
+    void calibrateGx();
   private:
     /**
-     * Private constructor because we only have 1 IMU which doesn't change.
-     */
+       Private constructor because we only have 1 IMU which doesn't change.
+    */
     Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr, GyroFullScaleSelection gfss, GyroSampleRate gsr);
 
     /**
-     * Reference to the singleton imu object.
-     */
+       Reference to the singleton imu object.
+    */
     static Imu* imu;
 
     /**
-     * Reference to the hardware.
-     */
+       Reference to the hardware.
+    */
     LSM6* imuHardware;
 
     /**
-     * Accelerometer sensitivity factor - number that we need to multiply the result with to get mg values.
-     */
+       Accelerometer sensitivity factor - number that we need to multiply the result with to get mg values.
+    */
     float acc_sensitivity_conversion_factor;
 
     /**
-     * Gyro sensitivity factor - number that we need to multiply the result with to get mdps values.
-     */
+       Gyro sensitivity factor - number that we need to multiply the result with to get mdps values.
+    */
     float gyro_sensitivity_conversion_factor;
 
     static volatile bool led_state;
     static void toggle_led();
+
+    float totalGx;
+    float gXZero;
 };
 
 #endif
