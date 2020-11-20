@@ -76,12 +76,22 @@ class Imu {
     /**
      * Changes the configuration of the Accelerometer.
      */
-    void reconfigureAcc(AccFullScaleSelection fss, AccAntiAliasFilter aaf, AccSampleRate sr);
+    void reconfigureAcc(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr);
 
     /**
      * Changes the configuration of the Gyroscope.
      */
-    void reconfigureGyro(GyroFullScaleSelection fss, GyroSampleRate sr);
+    void reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr);
+
+    /**
+     * Returns how much time we can allow between measurement updates for accelerometer.
+     */
+    unsigned int getAccRefreshRate(AccSampleRate asr);
+
+    /**
+     * Returns how much time we can allow between measurement updates for gyro.
+     */
+    unsigned int getGyroRefreshRate(GyroSampleRate gsr);
 
     /**
      * Returns Accelerometer's X axis value converted to mg.
@@ -184,8 +194,27 @@ class Imu {
      */
     float gyro_sensitivity_conversion_factor;
 
-    static volatile bool led_state;
+    static bool led_state;
     static void toggle_led();
+
+    /**
+     * How many microseconds should we aim to get between reads for accelerometer.
+     */
+    unsigned int acc_refresh_time_us;
+
+    /**
+     * How many microseconds should we aim to get between reads for gyroscope.
+     */
+    unsigned int gyro_refresh_time_us;
+
+    /**
+     * Time in microseconds since our last read.
+     */
+    long time_since_last_read;
+    /**
+     * Reads the sensor via I2C bus if the time since last read has been long enough.
+     */
+    void readSensorIfNeeded();
 };
 
 #endif

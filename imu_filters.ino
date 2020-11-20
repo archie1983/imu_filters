@@ -27,12 +27,11 @@ void setup()
 
 void loop()
 {
-  //Serial.print("A: ");
-//  Serial.print(Imu::getImu()->getAx());
-//  Serial.print(" ");
-//  Serial.print(Imu::getImu()->getAy());
-//  Serial.print(" ");
-//  Serial.print(Imu::getImu()->getAz());
+  Serial.print(Imu::getImu()->getAx());
+  Serial.print(", ");
+  Serial.print(Imu::getImu()->getAy());
+  Serial.print(",");
+  Serial.println(Imu::getImu()->getAz());
 //  imu.read();
 //
 ////  Serial.print("A: ");
@@ -47,7 +46,7 @@ void loop()
 //  Serial.print(imu.g.y);
 //  Serial.print(" ");
 //  Serial.println(imu.g.z);
-  Imu::getImu()->readAllAxis();
+//  Imu::getImu()->readAllAxis();
 
   delay(100);
 }
