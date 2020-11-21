@@ -15,7 +15,7 @@
 /**
  * Alpha factors for EMA filtering acceleromter and gyroscope values.
  */
-#define ACC_ALPHA_4_EMA 0.2
+#define ACC_ALPHA_4_EMA 0.5
 #define GYRO_ALPHA_4_EMA 0.5
 
 /**

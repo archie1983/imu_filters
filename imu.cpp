@@ -28,6 +28,8 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   totalGx = 0;
   gXZero = 0;
 
+  calibrateGx();
+
   /**
    * Initialising EMA values with current readings for IMU sensor outputs.
    * 
@@ -356,6 +358,33 @@ float Imu::getAzEmaFiltered() {
   } else {
     return 0.;
   }
+}
+
+/**
+   Returns Gyroscope's X axis value converted to mdps, EMA filtered.
+*/
+float Imu::getGxEmaFiltered() {
+  float current_EMA_val = (getGx() * GYRO_ALPHA_4_EMA) + (1 - GYRO_ALPHA_4_EMA) * prev_Gx_ema_val;
+  prev_Gx_ema_val = current_EMA_val;
+  return current_EMA_val;
+}
+
+/**
+   Returns Gyroscope's Y axis value converted to mdps, EMA filtered.
+*/
+float Imu::getGyEmaFiltered() {
+  float current_EMA_val = (getGy() * GYRO_ALPHA_4_EMA) + (1 - GYRO_ALPHA_4_EMA) * prev_Gy_ema_val;
+  prev_Gy_ema_val = current_EMA_val;
+  return current_EMA_val;
+}
+
+/**
+   Returns Gyroscope's Z axis value converted to mdps, EMA filtered.
+*/
+float Imu::getGzEmaFiltered() {
+  float current_EMA_val = (getGz() * GYRO_ALPHA_4_EMA) + (1 - GYRO_ALPHA_4_EMA) * prev_Gz_ema_val;
+  prev_Gz_ema_val = current_EMA_val;
+  return current_EMA_val;
 }
 
 /**
