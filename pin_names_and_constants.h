@@ -13,6 +13,12 @@
 #define CALIBRATION_ITERATIONS 100
 
 /**
+ * Alpha factors for EMA filtering acceleromter and gyroscope values.
+ */
+#define ACC_ALPHA_4_EMA 0.2
+#define GYRO_ALPHA_4_EMA 0.5
+
+/**
    LED
 */
 #define YELLOW_LED 13

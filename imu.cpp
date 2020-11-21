@@ -27,6 +27,23 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
 
   totalGx = 0;
   gXZero = 0;
+
+  /**
+   * Initialising EMA values with current readings for IMU sensor outputs.
+   * 
+   * We want raw values for accelerometer outputs and converted values for
+   * gyroscope, because accelerometer converstion factors are all between
+   * 0 and 1 and gyroscope conversion factors are all greater than 1.
+   * 
+   * We're trying to apply EMA on the greatest value- whether that's raw or
+   * converter. That should give better effect of EMA.
+   */
+  prev_Ax_ema_val = getAxRaw();
+  prev_Ay_ema_val = getAyRaw();
+  prev_Az_ema_val = getAzRaw();
+  prev_Gx_ema_val = getGx();
+  prev_Gy_ema_val = getGy();
+  prev_Gz_ema_val = getGz();
 }
 
 /**
@@ -56,9 +73,7 @@ void Imu::reconfigureAcc(Imu::AccFullScaleSelection afss, Imu::AccAntiAliasFilte
   /**
    * Choose refresh time.
    */
-  if (getAccRefreshRate(asr) < acc_refresh_time_us) {
-    acc_refresh_time_us = getAccRefreshRate(asr);
-  }
+  acc_refresh_time_us = getAccRefreshRate(asr);
 }
 
 /**
@@ -88,9 +103,7 @@ void Imu::reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr) {
   /**
    * Choose refresh time.
    */
-  if (getGyroRefreshRate(gsr) < gyro_refresh_time_us) {
-    gyro_refresh_time_us = getGyroRefreshRate(gsr);
-  }
+  gyro_refresh_time_us = getGyroRefreshRate(gsr);
 }
 
 /**
@@ -295,7 +308,57 @@ float Imu::getGzRaw() {
 }
 
 /**
-<<<<<<< HEAD
+   Returns Accelerometer's X axis value converted to mg with EMA filtering applied on the raw value
+   before multiplying with the conversion factor.
+*/
+float Imu::getAxEmaFiltered() {
+  if (imuHardware != NULL) {
+    readSensorIfNeeded();
+
+    float current_EMA_val = (getAxRaw() * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ax_ema_val;
+    prev_Ax_ema_val = current_EMA_val;
+    
+    return current_EMA_val * acc_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
+}
+
+/**
+   Returns Accelerometer's Y axis value converted to mg with EMA filtering applied on the raw value
+   before multiplying with the conversion factor.
+*/
+float Imu::getAyEmaFiltered() {
+  if (imuHardware != NULL) {
+    readSensorIfNeeded();
+
+    float current_EMA_val = (getAyRaw() * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ay_ema_val;
+    prev_Ay_ema_val = current_EMA_val;
+    
+    return current_EMA_val * acc_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
+}
+
+/**
+   Returns Accelerometer's Z axis value converted to mg with EMA filtering applied on the raw value
+   before multiplying with the conversion factor.
+*/
+float Imu::getAzEmaFiltered() {
+  if (imuHardware != NULL) {
+    readSensorIfNeeded();
+
+    float current_EMA_val = (getAzRaw() * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Az_ema_val;
+    prev_Az_ema_val = current_EMA_val;
+    
+    return current_EMA_val * acc_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
+}
+
+/**
  * Reads the sensor via I2C bus if the time since last read has been long enough.
  */
 void Imu::readSensorIfNeeded() {
@@ -303,6 +366,7 @@ void Imu::readSensorIfNeeded() {
    * If our hardware is not NULL and either gyro or accelerometer is due for a read, then read.
    */
   if (imuHardware != NULL && (micros() - time_since_last_read > acc_refresh_time_us || micros() - time_since_last_read > gyro_refresh_time_us)) {
+    toggle_led();
     imuHardware->read();
     time_since_last_read = micros();
   }
@@ -324,13 +388,6 @@ static void Imu::readAllAxis() {
   Serial.print(getGy());
   Serial.print(", ");
   Serial.println(getGz());
-}
-
-float Imu::readAx() {
-  if (imuHardware != NULL) {
-    imuHardware->read();
-    return getAx();
-  }
 }
 
 void Imu::toggle_led() {

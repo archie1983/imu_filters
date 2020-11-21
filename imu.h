@@ -154,6 +154,46 @@ class Imu {
     float getGzRaw();
 
     /**
+       Returns Accelerometer's X axis value EMA filtered.
+    */
+    float getAxEmaFiltered();
+
+    /**
+       Returns Accelerometer's Y axis value EMA filtered.
+    */
+    float getAyEmaFiltered();
+
+    /**
+       Returns Accelerometer's Z axis value EMA filtered.
+    */
+    float getAzEmaFiltered();
+
+    /**
+       Returns Gyroscope's X axis value EMA filtered.
+    */
+    float getGxEmaFiltered();
+
+    /**
+       Returns Gyroscope's Y axis value EMA filtered.
+    */
+    float getGyEmaFiltered();
+
+    /**
+       Returns Gyroscope's Z axis value EMA filtered.
+    */
+    float getGzEmaFiltered();
+
+    /**
+     * Variables required for applying EMA to the IMU outputs.
+     */
+    float prev_Ax_ema_val;
+    float prev_Ay_ema_val;
+    float prev_Az_ema_val;
+    float prev_Gx_ema_val;
+    float prev_Gy_ema_val;
+    float prev_Gz_ema_val;
+
+    /**
        Static getter for this class
     */
     static Imu* getImu();
@@ -172,11 +212,6 @@ class Imu {
        Take in a fresh reading for each initialised sensor.
     */
     void calibrateGx();
-    
-    /**
-     * Returns sensor data
-     */
-    float readAx();
 
   private:
     /**

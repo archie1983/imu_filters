@@ -32,26 +32,28 @@ void setup()
   Imu::initialiseIMU();
   Imu::getImu()->calibrateGx();
 
-  digitalWrite( L_DIR_PIN, HIGH );
-  digitalWrite( R_DIR_PIN, HIGH );
-
-  analogWrite( L_PWM_PIN, 64 );
-  analogWrite( R_PWM_PIN, 64 );
+//  digitalWrite( L_DIR_PIN, HIGH );
+//  digitalWrite( R_DIR_PIN, HIGH );
+//
+//  analogWrite( L_PWM_PIN, 64 );
+//  analogWrite( R_PWM_PIN, 64 );
 }
 
 void loop()
 {
-  Serial.println(Imu::getImu()->getGx());
+  Serial.print(Imu::getImu()->getAxEmaFiltered());
+  Serial.print(", ");
+  Serial.println(Imu::getImu()->getAx());
 
-  acceleration = (Imu::getImu()->readAx() / 1000) * 9.80665;
+  acceleration = (Imu::getImu()->getAx() / 1000) * 9.80665;
   vel = vel + (time_difference / 1000) * acceleration;
   pos = pos + (time_difference / 1000) * vel;
 
-  if (pos > 0.1) {
-    while (1) {
-      delay(500);
-    }
-  }
+//  if (pos > 0.1) {
+//    while (1) {
+//      delay(500);
+//    }
+//  }
 
   delay(time_difference);
 }
