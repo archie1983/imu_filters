@@ -40,9 +40,9 @@ void setup()
 
 void loop()
 {
-  Serial.print(Imu::getImu()->getGxEmaFiltered());
+  Serial.print(Imu::getImu()->getAxEmaFiltered());
   Serial.print(", ");
-  Serial.println(Imu::getImu()->getGx());
+  Serial.println(Imu::getImu()->getAx());
 
   acceleration = (Imu::getImu()->getAx() / 1000) * 9.80665;
   vel = vel + (time_difference / 1000) * acceleration;

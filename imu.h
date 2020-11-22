@@ -209,9 +209,14 @@ class Imu {
     void readAllAxis();
 
     /**
-       Take in a fresh reading for each initialised sensor.
+       Calibrate all axis and all gyroscope velocities.
     */
-    void calibrateGx();
+    void calibrateAllReadings();
+
+    /**
+     * A method to tell IMU class when the motor starts running and when it ends.
+     */
+    void setMotorRunning(boolean motor_running);
 
   private:
     /**
@@ -261,8 +266,42 @@ class Imu {
      */
     void readSensorIfNeeded();
 
-    float totalGx;
+    /**
+     * Variables needed to store calibration value for axis and gyro speeds.
+     */
+    float aXZero;
+    float aYZero;
+    float aZZero;
     float gXZero;
+    float gYZero;
+    float gZZero;
+    
+
+    /**
+     * Position of Romi according to what we can figure out from the accelerometer.
+     */
+    float posX;
+    float posY;
+
+    /**
+     * Immediate acceleration and speed for X and Y axis.
+     */
+    float curAcceleration_X;
+    float curAcceleration_Y;
+    float curSpeed_X;
+    float curSpeed_Y;
+
+    /**
+     * We will want to accumulate position only when the motor is running. In reality we probably should
+     * acuumulate it all the time, but given the noisiness of the sensor and it generally not being
+     * that accurate, this will help us to ignore random spikes.
+     */
+    boolean motor_is_running;
+
+    /**
+     * Function that we'll use to update the pose based on accelerometer data.
+     */
+    void updatePosition();
 };
 
 #endif

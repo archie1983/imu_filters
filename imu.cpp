@@ -17,18 +17,17 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
     while (1);
   }
 
+  acc_refresh_time_us = US_IN_1_S;
+  gyro_refresh_time_us = US_IN_1_S;
+
   imuHardware->enableDefault();
   reconfigureAcc(afss, aaaf, asr);
   reconfigureGyro(gfss, gsr);
 
-  time_since_last_read = 0;
-  acc_refresh_time_us = US_IN_1_S;
-  gyro_refresh_time_us = US_IN_1_S;
-
-  totalGx = 0;
-  gXZero = 0;
-
-  calibrateGx();
+  /**
+   * Calibrate
+   */
+  calibrateAllReadings();
 
   /**
    * Initialising EMA values with current readings for IMU sensor outputs.
@@ -40,12 +39,32 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
    * We're trying to apply EMA on the greatest value- whether that's raw or
    * converter. That should give better effect of EMA.
    */
-  prev_Ax_ema_val = getAxRaw();
-  prev_Ay_ema_val = getAyRaw();
-  prev_Az_ema_val = getAzRaw();
+  time_since_last_read = 0;
+  prev_Ax_ema_val = getAxRaw() - aXZero;
+  prev_Ay_ema_val = getAyRaw() - aYZero;
+  prev_Az_ema_val = getAzRaw() - aZZero;
   prev_Gx_ema_val = getGx();
   prev_Gy_ema_val = getGy();
   prev_Gz_ema_val = getGz();
+
+  /**
+   * At the beginning we're going to be at point (0, 0).
+   */
+  posX = 0.;
+  posY = 0.;
+
+  /**
+   * And speed and acceleration is 0.
+   */
+  curAcceleration_X = 0.;
+  curAcceleration_Y = 0.;
+  curSpeed_X = 0.;
+  curSpeed_Y = 0.;
+
+  /**
+   * And motor is not running.
+   */
+  motor_is_running = false;
 }
 
 /**
@@ -112,7 +131,7 @@ void Imu::reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr) {
  * Returns how much time we can allow between measurement updates.
  */
 unsigned int Imu::getAccRefreshRate(AccSampleRate asr) {
-  unsigned int tmp_refresh_time_us = 0;
+  unsigned long tmp_refresh_time_us = 0;
   switch (asr) {
     case ASR_OFF:
       tmp_refresh_time_us = US_IN_1_S;
@@ -148,6 +167,10 @@ unsigned int Imu::getAccRefreshRate(AccSampleRate asr) {
       tmp_refresh_time_us = US_IN_1_S / 6660.0; //# for 6.66kHz we need to divide 1s worth of us into 6660 chunks.
       break;
   }
+//  Serial.print("ASR: ");
+//  Serial.println(asr);
+//  Serial.print("T: ");
+//  Serial.print(tmp_refresh_time_us);
   return tmp_refresh_time_us;
 }
 
@@ -201,7 +224,7 @@ Imu* Imu::getImu() {
 float Imu::getAx() {
   if (imuHardware != NULL) {
     readSensorIfNeeded();
-    return getAxRaw() * acc_sensitivity_conversion_factor;
+    return (getAxRaw() - aXZero)  * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
   }
@@ -213,7 +236,7 @@ float Imu::getAx() {
 float Imu::getAy() {
   if (imuHardware != NULL) {
     readSensorIfNeeded();
-    return getAyRaw() * acc_sensitivity_conversion_factor;
+    return (getAyRaw() - aYZero) * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
   }
@@ -225,7 +248,7 @@ float Imu::getAy() {
 float Imu::getAz() {
   if (imuHardware != NULL) {
     readSensorIfNeeded();
-    return getAzRaw() * acc_sensitivity_conversion_factor;
+    return (getAzRaw() - aZZero) * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
   }
@@ -249,7 +272,7 @@ float Imu::getGx() {
 float Imu::getGy() {
   if (imuHardware != NULL) {
     readSensorIfNeeded();
-    return getGyRaw() * gyro_sensitivity_conversion_factor;
+    return getGyRaw() * gyro_sensitivity_conversion_factor - gYZero;
   } else {
     return 0.;
   }
@@ -261,7 +284,7 @@ float Imu::getGy() {
 float Imu::getGz() {
   if (imuHardware != NULL) {
     readSensorIfNeeded();
-    return getGzRaw() * gyro_sensitivity_conversion_factor;
+    return getGzRaw() * gyro_sensitivity_conversion_factor - gZZero;
   } else {
     return 0.;
   }
@@ -317,7 +340,7 @@ float Imu::getAxEmaFiltered() {
   if (imuHardware != NULL) {
     readSensorIfNeeded();
 
-    float current_EMA_val = (getAxRaw() * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ax_ema_val;
+    float current_EMA_val = ((getAxRaw() - aXZero) * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ax_ema_val;
     prev_Ax_ema_val = current_EMA_val;
     
     return current_EMA_val * acc_sensitivity_conversion_factor;
@@ -334,7 +357,7 @@ float Imu::getAyEmaFiltered() {
   if (imuHardware != NULL) {
     readSensorIfNeeded();
 
-    float current_EMA_val = (getAyRaw() * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ay_ema_val;
+    float current_EMA_val = ((getAyRaw() - aYZero) * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ay_ema_val;
     prev_Ay_ema_val = current_EMA_val;
     
     return current_EMA_val * acc_sensitivity_conversion_factor;
@@ -351,7 +374,7 @@ float Imu::getAzEmaFiltered() {
   if (imuHardware != NULL) {
     readSensorIfNeeded();
 
-    float current_EMA_val = (getAzRaw() * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Az_ema_val;
+    float current_EMA_val = ((getAzRaw() - aZZero)  * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Az_ema_val;
     prev_Az_ema_val = current_EMA_val;
     
     return current_EMA_val * acc_sensitivity_conversion_factor;
@@ -424,20 +447,48 @@ void Imu::toggle_led() {
   led_state = !led_state;
 }
 
-void Imu::calibrateGx() {
+void Imu::calibrateAllReadings() {
+  long long totalAx = 0.;
+  long long totalAy = 0.;
+  long long totalAz = 0.;
+  long long totalGx = 0.;
+  long long totalGy = 0.;
+  long long totalGz = 0.;
+
+  aXZero = 0;
+  aYZero = 0;
+  aZZero = 0;
+  gXZero = 0;
+  gYZero = 0;
+  gZZero = 0;
+
+//Serial.println(gyro_refresh_time_us);
+//Serial.println(acc_refresh_time_us);
+//Serial.println(US_IN_1_S / 12.5);
+  
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
     imuHardware->read();
 //    imuHardware->g.x * gyro_sensitivity_conversion_factor;
-    delay(1);
+    delay(max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0);
   }
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
     imuHardware->read();
+    totalAx += imuHardware->a.x;
+    totalAy += imuHardware->a.y;
+    totalAz += imuHardware->a.z;
     totalGx += imuHardware->g.x * gyro_sensitivity_conversion_factor;
-    delay(1);
+    totalGy += imuHardware->g.y * gyro_sensitivity_conversion_factor;
+    totalGz += imuHardware->g.z * gyro_sensitivity_conversion_factor;
+    delay(max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0);
   }
   gXZero = totalGx / CALIBRATION_ITERATIONS;
+  gYZero = totalGy / CALIBRATION_ITERATIONS;
+  gZZero = totalGz / CALIBRATION_ITERATIONS;
+  aXZero = totalAx / CALIBRATION_ITERATIONS;
+  aYZero = totalAy / CALIBRATION_ITERATIONS;
+  aZZero = totalAz / CALIBRATION_ITERATIONS;
 }
 
 /**
@@ -447,10 +498,28 @@ void Imu::initialiseIMU() {
   if (imu == NULL) {
     pinMode(YELLOW_LED, OUTPUT);
     //toggle_led();
-    imu = new Imu(Imu::AccFullScaleSelection::AFS_4,
+    imu = new Imu(Imu::AccFullScaleSelection::AFS_8,
                   Imu::AccAntiAliasFilter::AA_50,
                   Imu::AccSampleRate::ASR_125,
                   Imu::GyroFullScaleSelection::GFS_2000,
                   Imu::GyroSampleRate::GSR_104);
+  }
+}
+
+
+/**
+ * A method to tell IMU class when the motor starts running and when it ends.
+ */
+void Imu::setMotorRunning(boolean motor_running) {
+  motor_is_running = motor_running;
+
+  /**
+   * If we're stopping the motor, then nullify the speed and acceleration too.
+   */
+  if (!motor_running) {
+    float curAcceleration_X;
+    float curAcceleration_Y;
+    float curSpeed_X;
+    float curSpeed_Y;
   }
 }
