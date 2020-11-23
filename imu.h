@@ -74,14 +74,24 @@ class Imu {
     };
 
     /**
-       Changes the configuration of the Accelerometer.
-    */
-    void reconfigureAcc(AccFullScaleSelection fss, AccAntiAliasFilter aaf, AccSampleRate sr);
+     * Changes the configuration of the Accelerometer.
+     */
+    void reconfigureAcc(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr);
 
     /**
-       Changes the configuration of the Gyroscope.
-    */
-    void reconfigureGyro(GyroFullScaleSelection fss, GyroSampleRate sr);
+     * Changes the configuration of the Gyroscope.
+     */
+    void reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr);
+
+    /**
+     * Returns how much time we can allow between measurement updates for accelerometer.
+     */
+    unsigned int getAccRefreshRate(AccSampleRate asr);
+
+    /**
+     * Returns how much time we can allow between measurement updates for gyro.
+     */
+    unsigned int getGyroRefreshRate(GyroSampleRate gsr);
 
     /**
        Returns Accelerometer's X axis value converted to mg.
@@ -144,6 +154,46 @@ class Imu {
     float getGzRaw();
 
     /**
+       Returns Accelerometer's X axis value EMA filtered.
+    */
+    float getAxEmaFiltered();
+
+    /**
+       Returns Accelerometer's Y axis value EMA filtered.
+    */
+    float getAyEmaFiltered();
+
+    /**
+       Returns Accelerometer's Z axis value EMA filtered.
+    */
+    float getAzEmaFiltered();
+
+    /**
+       Returns Gyroscope's X axis value EMA filtered.
+    */
+    float getGxEmaFiltered();
+
+    /**
+       Returns Gyroscope's Y axis value EMA filtered.
+    */
+    float getGyEmaFiltered();
+
+    /**
+       Returns Gyroscope's Z axis value EMA filtered.
+    */
+    float getGzEmaFiltered();
+
+    /**
+     * Variables required for applying EMA to the IMU outputs.
+     */
+    float prev_Ax_ema_val;
+    float prev_Ay_ema_val;
+    float prev_Az_ema_val;
+    float prev_Gx_ema_val;
+    float prev_Gy_ema_val;
+    float prev_Gz_ema_val;
+
+    /**
        Static getter for this class
     */
     static Imu* getImu();
@@ -162,6 +212,7 @@ class Imu {
        Take in a fresh reading for each initialised sensor.
     */
     void calibrateGx();
+
   private:
     /**
        Private constructor because we only have 1 IMU which doesn't change.
@@ -188,8 +239,27 @@ class Imu {
     */
     float gyro_sensitivity_conversion_factor;
 
-    static volatile bool led_state;
+    static bool led_state;
     static void toggle_led();
+
+    /**
+     * How many microseconds should we aim to get between reads for accelerometer.
+     */
+    unsigned int acc_refresh_time_us;
+
+    /**
+     * How many microseconds should we aim to get between reads for gyroscope.
+     */
+    unsigned int gyro_refresh_time_us;
+
+    /**
+     * Time in microseconds since our last read.
+     */
+    long time_since_last_read;
+    /**
+     * Reads the sensor via I2C bus if the time since last read has been long enough.
+     */
+    void readSensorIfNeeded();
 
     float totalGx;
     float gXZero;
