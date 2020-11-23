@@ -19,6 +19,11 @@
 #define GYRO_ALPHA_4_EMA 0.5
 
 /**
+ * Gravity constant
+ */
+#define GRAVITY_CONSTANT 9.80665
+
+/**
    LED
 */
 #define YELLOW_LED 13
