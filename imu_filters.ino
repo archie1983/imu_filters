@@ -47,9 +47,9 @@ void loop()
   Imu::getImu()->getAx();
   Serial.print(Imu::getImu()->getCurrentPosX());
   Serial.print(", ");
-  Serial.print(Imu::getImu()->getCurrentSpeedX() * 1000);
+  Serial.print(Imu::getImu()->getCurrentSpeedX());
   Serial.print(", ");
-  Serial.println(Imu::getImu()->getCurrentAccelerationX() * 1000);
+  Serial.println(Imu::getImu()->getCurrentAccelerationX());
 
 //  acceleration = (Imu::getImu()->getAx() / 1000) * 9.80665;
 //  vel = vel + (time_difference / 1000) * acceleration;
