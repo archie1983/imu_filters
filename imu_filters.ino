@@ -40,13 +40,20 @@ void setup()
 
 void loop()
 {
-  Serial.print(Imu::getImu()->getGxEmaFiltered());
-  Serial.print(", ");
-  Serial.println(Imu::getImu()->getGx());
+//  Serial.print(Imu::getImu()->getAxEmaFiltered());
+//  Serial.print(", ");
+//  Serial.println(Imu::getImu()->getAx());
 
-  acceleration = (Imu::getImu()->getAx() / 1000) * 9.80665;
-  vel = vel + (time_difference / 1000) * acceleration;
-  pos = pos + (time_difference / 1000) * vel;
+  Imu::getImu()->getAx();
+  Serial.print(Imu::getImu()->getCurrentPosX());
+  Serial.print(", ");
+  Serial.print(Imu::getImu()->getCurrentSpeedX() * 1000);
+  Serial.print(", ");
+  Serial.println(Imu::getImu()->getCurrentAccelerationX() * 1000);
+
+//  acceleration = (Imu::getImu()->getAx() / 1000) * 9.80665;
+//  vel = vel + (time_difference / 1000) * acceleration;
+//  pos = pos + (time_difference / 1000) * vel;
 
 //  if (pos > 0.1) {
 //    while (1) {

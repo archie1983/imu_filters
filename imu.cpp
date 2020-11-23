@@ -17,18 +17,17 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
     while (1);
   }
 
+  acc_refresh_time_us = US_IN_1_S;
+  gyro_refresh_time_us = US_IN_1_S;
+
   imuHardware->enableDefault();
   reconfigureAcc(afss, aaaf, asr);
   reconfigureGyro(gfss, gsr);
 
-  time_since_last_read = 0;
-  acc_refresh_time_us = US_IN_1_S;
-  gyro_refresh_time_us = US_IN_1_S;
-
-  totalGx = 0;
-  gXZero = 0;
-
-  calibrateGx();
+  /**
+   * Calibrate
+   */
+  calibrateAllReadings();
 
   /**
    * Initialising EMA values with current readings for IMU sensor outputs.
@@ -40,12 +39,32 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
    * We're trying to apply EMA on the greatest value- whether that's raw or
    * converter. That should give better effect of EMA.
    */
-  prev_Ax_ema_val = getAxRaw();
-  prev_Ay_ema_val = getAyRaw();
-  prev_Az_ema_val = getAzRaw();
+  time_since_last_read = 0;
+  prev_Ax_ema_val = getAxRaw() - aXZero;
+  prev_Ay_ema_val = getAyRaw() - aYZero;
+  prev_Az_ema_val = getAzRaw() - aZZero;
   prev_Gx_ema_val = getGx();
   prev_Gy_ema_val = getGy();
   prev_Gz_ema_val = getGz();
+
+  /**
+   * At the beginning we're going to be at point (0, 0).
+   */
+  posX = 0.;
+  posY = 0.;
+
+  /**
+   * And speed and acceleration is 0.
+   */
+  curAcceleration_X = 0.;
+  curAcceleration_Y = 0.;
+  curSpeed_X = 0.;
+  curSpeed_Y = 0.;
+
+  /**
+   * And motor is not running.
+   */
+  motor_is_running = false;
 }
 
 /**
@@ -112,7 +131,7 @@ void Imu::reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr) {
  * Returns how much time we can allow between measurement updates.
  */
 unsigned int Imu::getAccRefreshRate(AccSampleRate asr) {
-  unsigned int tmp_refresh_time_us = 0;
+  unsigned long tmp_refresh_time_us = 0;
   switch (asr) {
     case ASR_OFF:
       tmp_refresh_time_us = US_IN_1_S;
@@ -148,6 +167,10 @@ unsigned int Imu::getAccRefreshRate(AccSampleRate asr) {
       tmp_refresh_time_us = US_IN_1_S / 6660.0; //# for 6.66kHz we need to divide 1s worth of us into 6660 chunks.
       break;
   }
+//  Serial.print("ASR: ");
+//  Serial.println(asr);
+//  Serial.print("T: ");
+//  Serial.print(tmp_refresh_time_us);
   return tmp_refresh_time_us;
 }
 
@@ -198,10 +221,12 @@ Imu* Imu::getImu() {
 /**
    Returns Accelerometer's X axis value converted to mg.
 */
-float Imu::getAx() {
+float Imu::getAx(bool readHW) {
   if (imuHardware != NULL) {
-    readSensorIfNeeded();
-    return getAxRaw() * acc_sensitivity_conversion_factor;
+    if (readHW) {
+      readSensorIfNeeded();
+    }
+    return (getAxRaw() - aXZero)  * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
   }
@@ -210,10 +235,12 @@ float Imu::getAx() {
 /**
    Returns Accelerometer's Y axis value converted to mg.
 */
-float Imu::getAy() {
+float Imu::getAy(bool readHW) {
   if (imuHardware != NULL) {
-    readSensorIfNeeded();
-    return getAyRaw() * acc_sensitivity_conversion_factor;
+    if (readHW) {
+      readSensorIfNeeded();
+    }
+    return (getAyRaw() - aYZero) * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
   }
@@ -222,10 +249,12 @@ float Imu::getAy() {
 /**
    Returns Accelerometer's Z axis value converted to mg.
 */
-float Imu::getAz() {
+float Imu::getAz(bool readHW) {
   if (imuHardware != NULL) {
-    readSensorIfNeeded();
-    return getAzRaw() * acc_sensitivity_conversion_factor;
+    if (readHW) {
+      readSensorIfNeeded();
+    }
+    return (getAzRaw() - aZZero) * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
   }
@@ -234,9 +263,11 @@ float Imu::getAz() {
 /**
    Returns Gyroscope's X axis value converted to mdps.
 */
-float Imu::getGx() {
+float Imu::getGx(bool readHW) {
   if (imuHardware != NULL) {
-    readSensorIfNeeded();
+    if (readHW) {
+      readSensorIfNeeded();
+    }
     return getGxRaw() * gyro_sensitivity_conversion_factor - gXZero;
   } else {
     return 0.;
@@ -246,10 +277,12 @@ float Imu::getGx() {
 /**
    Returns Gyroscope's Y axis value converted to mdps.
 */
-float Imu::getGy() {
+float Imu::getGy(bool readHW) {
   if (imuHardware != NULL) {
-    readSensorIfNeeded();
-    return getGyRaw() * gyro_sensitivity_conversion_factor;
+    if (readHW) {
+      readSensorIfNeeded();
+    }
+    return getGyRaw() * gyro_sensitivity_conversion_factor - gYZero;
   } else {
     return 0.;
   }
@@ -258,13 +291,57 @@ float Imu::getGy() {
 /**
    Returns Gyroscope's Z axis value converted to mdps.
 */
-float Imu::getGz() {
+float Imu::getGz(bool readHW) {
   if (imuHardware != NULL) {
-    readSensorIfNeeded();
-    return getGzRaw() * gyro_sensitivity_conversion_factor;
+    if (readHW) {
+      readSensorIfNeeded();
+    }
+    return getGzRaw() * gyro_sensitivity_conversion_factor - gZZero;
   } else {
     return 0.;
   }
+}
+
+/**
+   Returns Accelerometer's X axis value converted to mg.
+*/
+float Imu::getAx() {
+  return getAx(true);
+}
+
+/**
+   Returns Accelerometer's Y axis value converted to mg.
+*/
+float Imu::getAy() {
+  return getAy(true);
+}
+
+/**
+   Returns Accelerometer's Z axis value converted to mg.
+*/
+float Imu::getAz() {
+  return getAz(true);
+}
+
+/**
+   Returns Gyroscope's X axis value converted to mdps.
+*/
+float Imu::getGx() {
+  return getGx(true);
+}
+
+/**
+   Returns Gyroscope's Y axis value converted to mdps.
+*/
+float Imu::getGy() {
+  return getGy(true);
+}
+
+/**
+   Returns Gyroscope's Z axis value converted to mdps.
+*/
+float Imu::getGz() {
+  return getGz(true);
 }
 
 /**
@@ -313,11 +390,13 @@ float Imu::getGzRaw() {
    Returns Accelerometer's X axis value converted to mg with EMA filtering applied on the raw value
    before multiplying with the conversion factor.
 */
-float Imu::getAxEmaFiltered() {
+float Imu::getAxEmaFiltered(bool readHW) {
   if (imuHardware != NULL) {
-    readSensorIfNeeded();
+    if (readHW) {
+      readSensorIfNeeded();
+    }
 
-    float current_EMA_val = (getAxRaw() * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ax_ema_val;
+    float current_EMA_val = ((getAxRaw() - aXZero) * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ax_ema_val;
     prev_Ax_ema_val = current_EMA_val;
     
     return current_EMA_val * acc_sensitivity_conversion_factor;
@@ -330,11 +409,13 @@ float Imu::getAxEmaFiltered() {
    Returns Accelerometer's Y axis value converted to mg with EMA filtering applied on the raw value
    before multiplying with the conversion factor.
 */
-float Imu::getAyEmaFiltered() {
+float Imu::getAyEmaFiltered(bool readHW) {
   if (imuHardware != NULL) {
-    readSensorIfNeeded();
+    if (readHW) {
+      readSensorIfNeeded();
+    }
 
-    float current_EMA_val = (getAyRaw() * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ay_ema_val;
+    float current_EMA_val = ((getAyRaw() - aYZero) * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ay_ema_val;
     prev_Ay_ema_val = current_EMA_val;
     
     return current_EMA_val * acc_sensitivity_conversion_factor;
@@ -347,11 +428,13 @@ float Imu::getAyEmaFiltered() {
    Returns Accelerometer's Z axis value converted to mg with EMA filtering applied on the raw value
    before multiplying with the conversion factor.
 */
-float Imu::getAzEmaFiltered() {
+float Imu::getAzEmaFiltered(bool readHW) {
   if (imuHardware != NULL) {
-    readSensorIfNeeded();
+    if (readHW) {
+      readSensorIfNeeded();
+    }
 
-    float current_EMA_val = (getAzRaw() * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Az_ema_val;
+    float current_EMA_val = ((getAzRaw() - aZZero)  * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Az_ema_val;
     prev_Az_ema_val = current_EMA_val;
     
     return current_EMA_val * acc_sensitivity_conversion_factor;
@@ -363,8 +446,8 @@ float Imu::getAzEmaFiltered() {
 /**
    Returns Gyroscope's X axis value converted to mdps, EMA filtered.
 */
-float Imu::getGxEmaFiltered() {
-  float current_EMA_val = (getGx() * GYRO_ALPHA_4_EMA) + (1 - GYRO_ALPHA_4_EMA) * prev_Gx_ema_val;
+float Imu::getGxEmaFiltered(bool readHW) {
+  float current_EMA_val = (getGx(readHW) * GYRO_ALPHA_4_EMA) + (1 - GYRO_ALPHA_4_EMA) * prev_Gx_ema_val;
   prev_Gx_ema_val = current_EMA_val;
   return current_EMA_val;
 }
@@ -372,8 +455,8 @@ float Imu::getGxEmaFiltered() {
 /**
    Returns Gyroscope's Y axis value converted to mdps, EMA filtered.
 */
-float Imu::getGyEmaFiltered() {
-  float current_EMA_val = (getGy() * GYRO_ALPHA_4_EMA) + (1 - GYRO_ALPHA_4_EMA) * prev_Gy_ema_val;
+float Imu::getGyEmaFiltered(bool readHW) {
+  float current_EMA_val = (getGy(readHW) * GYRO_ALPHA_4_EMA) + (1 - GYRO_ALPHA_4_EMA) * prev_Gy_ema_val;
   prev_Gy_ema_val = current_EMA_val;
   return current_EMA_val;
 }
@@ -381,10 +464,55 @@ float Imu::getGyEmaFiltered() {
 /**
    Returns Gyroscope's Z axis value converted to mdps, EMA filtered.
 */
-float Imu::getGzEmaFiltered() {
-  float current_EMA_val = (getGz() * GYRO_ALPHA_4_EMA) + (1 - GYRO_ALPHA_4_EMA) * prev_Gz_ema_val;
+float Imu::getGzEmaFiltered(bool readHW) {
+  float current_EMA_val = (getGz(readHW) * GYRO_ALPHA_4_EMA) + (1 - GYRO_ALPHA_4_EMA) * prev_Gz_ema_val;
   prev_Gz_ema_val = current_EMA_val;
   return current_EMA_val;
+}
+
+/**
+   Returns Accelerometer's X axis value converted to mg with EMA filtering applied on the raw value
+   before multiplying with the conversion factor.
+*/
+float Imu::getAxEmaFiltered() {
+  return getAxEmaFiltered(true);
+}
+
+/**
+   Returns Accelerometer's Y axis value converted to mg with EMA filtering applied on the raw value
+   before multiplying with the conversion factor.
+*/
+float Imu::getAyEmaFiltered() {
+  return getAyEmaFiltered(true);
+}
+
+/**
+   Returns Accelerometer's Z axis value converted to mg with EMA filtering applied on the raw value
+   before multiplying with the conversion factor.
+*/
+float Imu::getAzEmaFiltered() {
+  return getAzEmaFiltered(true);
+}
+
+/**
+   Returns Gyroscope's X axis value converted to mdps, EMA filtered.
+*/
+float Imu::getGxEmaFiltered() {
+  return getGxEmaFiltered(true);
+}
+
+/**
+   Returns Gyroscope's Y axis value converted to mdps, EMA filtered.
+*/
+float Imu::getGyEmaFiltered() {
+  return getGyEmaFiltered(true);
+}
+
+/**
+   Returns Gyroscope's Z axis value converted to mdps, EMA filtered.
+*/
+float Imu::getGzEmaFiltered() {
+  return getGzEmaFiltered(true);
 }
 
 /**
@@ -394,11 +522,63 @@ void Imu::readSensorIfNeeded() {
   /**
    * If our hardware is not NULL and either gyro or accelerometer is due for a read, then read.
    */
-  if (imuHardware != NULL && (micros() - time_since_last_read > acc_refresh_time_us || micros() - time_since_last_read > gyro_refresh_time_us)) {
+  long time_diff = micros() - time_since_last_read;
+  if (imuHardware != NULL && (time_diff > acc_refresh_time_us || time_diff > gyro_refresh_time_us)) {
     toggle_led();
     imuHardware->read();
+
+    /**
+     * If we're reading in a new batch of values, then we may want to update our pose based on that
+     */
+    updatePosition(time_diff);
+    
     time_since_last_read = micros();
   }
+}
+
+void Imu::updatePosition(float time_diff) {
+//  if (motor_is_running) {
+//    
+//  }
+
+  /**
+   * WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
+   * enter eternal recursion. So pass false into those functions.
+   */
+  curAcceleration_X = (getAx(false) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+  curSpeed_X = curSpeed_X + (time_diff / US_IN_1_S) * curAcceleration_X; //# converting acceleration to the speed change in m/s and adding to the speed
+  posX = posX + (time_diff / US_IN_1_S) * curSpeed_X; //# converting position to m
+
+  curAcceleration_Y = (getAyEmaFiltered(false) / 1000.0) * GRAVITY_CONSTANT;
+  curSpeed_Y = curSpeed_Y + (time_diff / US_IN_1_S) * curAcceleration_Y;
+  posY = posY + (time_diff / US_IN_1_S) * curSpeed_Y;
+}
+
+/**
+ * Current immediate values for speed and acceleration
+ */
+float Imu::getCurrentSpeedX() {
+  return curSpeed_X;
+}
+
+float Imu::getCurrentSpeedY() {
+  return curSpeed_Y;
+}
+
+float Imu::getCurrentAccelerationX() {
+  return curAcceleration_X;
+}
+
+float Imu::getCurrentAccelerationY() {
+  return curAcceleration_Y;
+}
+
+float Imu::getCurrentPosX() {
+  return posX;
+}
+
+float Imu::getCurrentPosY() {
+  return posY;
 }
 
 /**
@@ -424,21 +604,54 @@ void Imu::toggle_led() {
   led_state = !led_state;
 }
 
-void Imu::calibrateGx() {
+void Imu::calibrateAllReadings() {
+  long long totalAx = 0.;
+  long long totalAy = 0.;
+  long long totalAz = 0.;
+  long long totalGx = 0.;
+  long long totalGy = 0.;
+  long long totalGz = 0.;
+
+  aXZero = 0;
+  aYZero = 0;
+  aZZero = 0;
+  gXZero = 0;
+  gYZero = 0;
+  gZZero = 0;
+
+//Serial.println(gyro_refresh_time_us);
+//Serial.println(acc_refresh_time_us);
+//Serial.println(US_IN_1_S / 12.5);
+  
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
     imuHardware->read();
+<<<<<<< HEAD
 //    imuHardware->g.x;
     delay(1);
+=======
+//    imuHardware->g.x * gyro_sensitivity_conversion_factor;
+    delay(max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0);
+>>>>>>> main
   }
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
     imuHardware->read();
+    totalAx += imuHardware->a.x;
+    totalAy += imuHardware->a.y;
+    totalAz += imuHardware->a.z;
     totalGx += imuHardware->g.x * gyro_sensitivity_conversion_factor;
-    delay(1);
+    totalGy += imuHardware->g.y * gyro_sensitivity_conversion_factor;
+    totalGz += imuHardware->g.z * gyro_sensitivity_conversion_factor;
+    delay(max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0);
   }
   //gXZero already multiplied by sensitivity
   gXZero = totalGx / CALIBRATION_ITERATIONS;
+  gYZero = totalGy / CALIBRATION_ITERATIONS;
+  gZZero = totalGz / CALIBRATION_ITERATIONS;
+  aXZero = totalAx / CALIBRATION_ITERATIONS;
+  aYZero = totalAy / CALIBRATION_ITERATIONS;
+  aZZero = totalAz / CALIBRATION_ITERATIONS;
 }
 
 /**
@@ -448,10 +661,27 @@ void Imu::initialiseIMU() {
   if (imu == NULL) {
     pinMode(YELLOW_LED, OUTPUT);
     //toggle_led();
-    imu = new Imu(Imu::AccFullScaleSelection::AFS_4,
-                  Imu::AccAntiAliasFilter::AA_50,
-                  Imu::AccSampleRate::ASR_125,
+    imu = new Imu(Imu::AccFullScaleSelection::AFS_8,
+                  Imu::AccAntiAliasFilter::AA_400,
+                  Imu::AccSampleRate::ASR_104,
                   Imu::GyroFullScaleSelection::GFS_2000,
                   Imu::GyroSampleRate::GSR_104);
+  }
+}
+
+/**
+ * A method to tell IMU class when the motor starts running and when it ends.
+ */
+void Imu::setMotorRunning(boolean motor_running) {
+  motor_is_running = motor_running;
+
+  /**
+   * If we're stopping the motor, then nullify the speed and acceleration too.
+   */
+  if (!motor_running) {
+    curAcceleration_X = 0.;
+    curAcceleration_Y = 0.;
+    curSpeed_X = 0.;
+    curSpeed_Y = 0.;
   }
 }
