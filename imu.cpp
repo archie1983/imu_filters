@@ -196,7 +196,7 @@ void Imu::calibrateGx() {
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
     imuHardware->read();
-//    imuHardware->g.x * gyro_sensitivity_conversion_factor;
+//    imuHardware->g.x;
     delay(1);
   }
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
@@ -205,6 +205,7 @@ void Imu::calibrateGx() {
     totalGx += imuHardware->g.x * gyro_sensitivity_conversion_factor;
     delay(1);
   }
+  //gXZero already multiplied by sensitivity
   gXZero = totalGx / CALIBRATION_ITERATIONS;
 }
 
