@@ -542,14 +542,14 @@ void Imu::updatePosition(float time_diff) {
 //  }
 
   /**
-   * FIXME: Doing getAx() here or getAxEmaFiltered() is risky, because if we're slow enough, we could
-   * enter eternal recursion.
+   * WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
+   * enter eternal recursion. So pass false into those functions.
    */
-  curAcceleration_X = (getAx(false) / 1000.0) / GRAVITY_CONSTANT; //# converting mg to m/s^2
+  curAcceleration_X = (getAx(false) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
   curSpeed_X = curSpeed_X + (time_diff / US_IN_1_S) * curAcceleration_X; //# converting acceleration to the speed change in m/s and adding to the speed
   posX = posX + (time_diff / US_IN_1_S) * curSpeed_X; //# converting position to m
 
-  curAcceleration_Y = (getAyEmaFiltered(false) / 1000.0) / GRAVITY_CONSTANT;
+  curAcceleration_Y = (getAyEmaFiltered(false) / 1000.0) * GRAVITY_CONSTANT;
   curSpeed_Y = curSpeed_Y + (time_diff / US_IN_1_S) * curAcceleration_Y;
   posY = posY + (time_diff / US_IN_1_S) * curSpeed_Y;
 }
