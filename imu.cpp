@@ -537,34 +537,32 @@ void Imu::readSensorIfNeeded() {
 }
 
 void Imu::updatePosition(float time_diff) {
-//  if (motor_is_running) {
-//    
-//  }
-
-  /**
-   * WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
-   * enter eternal recursion. So pass false into those functions.
-   */
-  curAcceleration_X = (getAx(false) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
-
-  /**
-   * Dropping noise
-   */
-  if (abs(curAcceleration_X) < 0.05) {
-    curAcceleration_X = 0;
-  }
+  if (motor_is_running) {
+    /**
+     * WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
+     * enter eternal recursion. So pass false into those functions.
+     */
+    curAcceleration_X = (getAx(false) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
   
-  curSpeed_X = curSpeed_X + (time_diff / US_IN_1_S) * curAcceleration_X; //# converting acceleration to the speed change in m/s and adding to the speed
-
-  if (abs(curSpeed_X) < 0.01) {
-    curSpeed_X = 0;
-  }
+    /**
+     * Dropping noise
+     */
+    if (abs(curAcceleration_X) < 0.05) {
+      curAcceleration_X = 0;
+    }
+    
+    curSpeed_X = curSpeed_X + (time_diff / US_IN_1_S) * curAcceleration_X; //# converting acceleration to the speed change in m/s and adding to the speed
   
-  posX = posX + (time_diff / US_IN_1_S) * curSpeed_X; //# converting position to m
-
-  curAcceleration_Y = (getAyEmaFiltered(false) / 1000.0) * GRAVITY_CONSTANT;
-  curSpeed_Y = curSpeed_Y + (time_diff / US_IN_1_S) * curAcceleration_Y;
-  posY = posY + (time_diff / US_IN_1_S) * curSpeed_Y;
+    if (abs(curSpeed_X) < 0.01) {
+      curSpeed_X = 0;
+    }
+    
+    posX = posX + (time_diff / US_IN_1_S) * curSpeed_X; //# converting position to m
+  
+    curAcceleration_Y = (getAyEmaFiltered(false) / 1000.0) * GRAVITY_CONSTANT;
+    curSpeed_Y = curSpeed_Y + (time_diff / US_IN_1_S) * curAcceleration_Y;
+    posY = posY + (time_diff / US_IN_1_S) * curSpeed_Y;
+  }
 }
 
 /**

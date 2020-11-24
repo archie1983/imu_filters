@@ -70,6 +70,7 @@ float random_walk_turn = 0;   // our random walk behaviour needs a global variab
 #define STATE_RANDOM_WALK     4
 #define STATE_MAX_STATES      5    // used when selecting a random state
 #define STATE_IDLE            6    // used when doing nothing
+#define STATE_BRAKING         7    // used when we've stopped the motors already but assume that unit is still moving forwards.
 int STATE = STATE_DRIVE_STRAIGHT;  // System starts by driving straight
 
 /*
@@ -82,12 +83,18 @@ void beep() {
   delay(150);
 }
 
-void stop_motors() {
+void stop_motors(bool notify_imu) {
   // Make sure motors are off so the robot
   // stays still.
   L_Motor.setPower( 0 );
   R_Motor.setPower( 0 );
-  Imu::getImu()->setMotorRunning(false);
+
+  /**
+   * Notify imu if we have to.
+   */
+  if (notify_imu) {
+    Imu::getImu()->setMotorRunning(false);
+  }
 }
 
 float time_difference = 100;
@@ -108,8 +115,7 @@ void setup()
 
   // Make sure motors are off so the robot
   // stays still.
-  L_Motor.setPower( 0 );
-  R_Motor.setPower( 0 );
+  stop_motors(true);
 
   // Begin tracking encoder changes.
   setupEncoder0();
@@ -146,9 +152,12 @@ void loop()
    * If we've been going straight for over a second, then stop
    */
   if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts > 1000) {
-    stop_motors();
-    changeState(STATE_IDLE);
+    stop_motors(false); //# stop motors, but don't notify IMU yet, because IMU will still have to measure while we're braking
+    changeState(STATE_BRAKING);
     Serial.println("STOP");
+  } else if(STATE == STATE_BRAKING && millis() - behaviour_ts > 150) { //# A wild assumption here that the braking time for our motor power is 150ms
+    changeState(STATE_IDLE);
+    stop_motors(true);
   }
 
   act_on_commands();
@@ -253,11 +262,10 @@ void driveStraight( float theta_demand ) {
   float l_pwr = L_PID.update( (fwd_bias - bearing), l_speed_t3 );
   float r_pwr = R_PID.update( (fwd_bias + bearing), r_speed_t3 );
 
+  Imu::getImu()->setMotorRunning(true);
   // Write power to motors.
   L_Motor.setPower(l_pwr);
   R_Motor.setPower(r_pwr);
-  Imu::getImu()->setMotorRunning(true);
-
 } // end of behaviour
 
 /*
