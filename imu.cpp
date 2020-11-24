@@ -24,6 +24,9 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   reconfigureAcc(afss, aaaf, asr);
   reconfigureGyro(gfss, gsr);
 
+  // Wait for IMU readings to stabilize.
+  delay(1000);
+
   /**
    * Calibrate
    */
@@ -623,17 +626,13 @@ void Imu::calibrateAllReadings() {
 //Serial.println(acc_refresh_time_us);
 //Serial.println(US_IN_1_S / 12.5);
   
-  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
-  {
-    imuHardware->read();
-<<<<<<< HEAD
-//    imuHardware->g.x;
-    delay(1);
-=======
-//    imuHardware->g.x * gyro_sensitivity_conversion_factor;
-    delay(max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0);
->>>>>>> main
-  }
+//  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
+//  {
+//    imuHardware->read();
+////    imuHardware->g.x * gyro_sensitivity_conversion_factor;
+//    delay(max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0);
+//
+//  }
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
     imuHardware->read();
