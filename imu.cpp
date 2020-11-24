@@ -552,7 +552,20 @@ void Imu::updatePosition(float time_diff) {
    * enter eternal recursion. So pass false into those functions.
    */
   curAcceleration_X = (getAx(false) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+
+  /**
+   * Dropping noise
+   */
+  if (abs(curAcceleration_X) < 0.05) {
+    curAcceleration_X = 0;
+  }
+  
   curSpeed_X = curSpeed_X + (time_diff / US_IN_1_S) * curAcceleration_X; //# converting acceleration to the speed change in m/s and adding to the speed
+
+  if (abs(curSpeed_X) < 0.01) {
+    curSpeed_X = 0;
+  }
+  
   posX = posX + (time_diff / US_IN_1_S) * curSpeed_X; //# converting position to m
 
   curAcceleration_Y = (getAyEmaFiltered(false) / 1000.0) * GRAVITY_CONSTANT;
