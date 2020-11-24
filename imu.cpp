@@ -622,17 +622,6 @@ void Imu::calibrateAllReadings() {
   gYZero = 0;
   gZZero = 0;
 
-//Serial.println(gyro_refresh_time_us);
-//Serial.println(acc_refresh_time_us);
-//Serial.println(US_IN_1_S / 12.5);
-  
-//  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
-//  {
-//    imuHardware->read();
-////    imuHardware->g.x * gyro_sensitivity_conversion_factor;
-//    delay(max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0);
-//
-//  }
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
     imuHardware->read();
