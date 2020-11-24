@@ -68,6 +68,9 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
    * And motor is not running.
    */
   motor_is_running = false;
+
+  heading = 0;
+  previous_time = millis();
 }
 
 /**
@@ -640,6 +643,32 @@ void Imu::calibrateAllReadings() {
   aXZero = totalAx / CALIBRATION_ITERATIONS;
   aYZero = totalAy / CALIBRATION_ITERATIONS;
   aZZero = totalAz / CALIBRATION_ITERATIONS;
+}
+
+float Imu::calcHeading(){
+  unsigned long time_now = millis();
+  unsigned long delta_t = time_now - previous_time;
+
+  if (delta_t > 100) {
+
+    float GyroZ = Imu::getImu() -> getGz();
+    //    Serial.print(GyroZ);
+    //    Serial.print(",");
+    //    Convert into deg / s
+    float GyroZ_dps = GyroZ / 1000;
+    //    Serial.print(GyroZ_dps);
+    //    Serial.print(",");
+    //    float difference_rateOfchange_Z = previous_GyroZ_dps - GyroZ_dps;
+    //    Serial.print(difference_rateOfchange_Z);
+    //    Serial.print(",");
+    heading += GyroZ_dps * ((float)delta_t / 1000);
+    Serial.println(heading);
+
+    //previous_GyroZ_dps = GyroZ_dps;
+    previous_time = time_now;
+  }
+
+  return heading;
 }
 
 /**

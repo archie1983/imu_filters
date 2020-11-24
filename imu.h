@@ -74,23 +74,23 @@ class Imu {
     };
 
     /**
-     * Changes the configuration of the Accelerometer.
-     */
+       Changes the configuration of the Accelerometer.
+    */
     void reconfigureAcc(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr);
 
     /**
-     * Changes the configuration of the Gyroscope.
-     */
+       Changes the configuration of the Gyroscope.
+    */
     void reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr);
 
     /**
-     * Returns how much time we can allow between measurement updates for accelerometer.
-     */
+       Returns how much time we can allow between measurement updates for accelerometer.
+    */
     unsigned int getAccRefreshRate(AccSampleRate asr);
 
     /**
-     * Returns how much time we can allow between measurement updates for gyro.
-     */
+       Returns how much time we can allow between measurement updates for gyro.
+    */
     unsigned int getGyroRefreshRate(GyroSampleRate gsr);
 
     /**
@@ -244,8 +244,8 @@ class Imu {
     float getGzEmaFiltered(bool readHW);
 
     /**
-     * Variables required for applying EMA to the IMU outputs.
-     */
+       Variables required for applying EMA to the IMU outputs.
+    */
     float prev_Ax_ema_val;
     float prev_Ay_ema_val;
     float prev_Az_ema_val;
@@ -274,19 +274,24 @@ class Imu {
     void calibrateAllReadings();
 
     /**
-     * A method to tell IMU class when the motor starts running and when it ends.
-     */
+       A method to tell IMU class when the motor starts running and when it ends.
+    */
     void setMotorRunning(boolean motor_running);
 
     /**
-     * Current immediate values for speed and acceleration
-     */
+       Current immediate values for speed and acceleration
+    */
     float getCurrentSpeedX();
     float getCurrentSpeedY();
     float getCurrentAccelerationX();
     float getCurrentAccelerationY();
     float getCurrentPosX();
     float getCurrentPosY();
+
+    /**
+       Returns heading angle in degrees
+    */
+    float calcHeading();
 
   private:
     /**
@@ -318,60 +323,63 @@ class Imu {
     static void toggle_led();
 
     /**
-     * How many microseconds should we aim to get between reads for accelerometer.
-     */
+       How many microseconds should we aim to get between reads for accelerometer.
+    */
     unsigned int acc_refresh_time_us;
 
     /**
-     * How many microseconds should we aim to get between reads for gyroscope.
-     */
+       How many microseconds should we aim to get between reads for gyroscope.
+    */
     unsigned int gyro_refresh_time_us;
 
     /**
-     * Time in microseconds since our last read.
-     */
+       Time in microseconds since our last read.
+    */
     long time_since_last_read;
     /**
-     * Reads the sensor via I2C bus if the time since last read has been long enough.
-     */
+       Reads the sensor via I2C bus if the time since last read has been long enough.
+    */
     void readSensorIfNeeded();
 
     /**
-     * Variables needed to store calibration value for axis and gyro speeds.
-     */
+       Variables needed to store calibration value for axis and gyro speeds.
+    */
     float aXZero;
     float aYZero;
     float aZZero;
     float gXZero;
     float gYZero;
     float gZZero;
-    
+
 
     /**
-     * Position of Romi according to what we can figure out from the accelerometer.
-     */
+       Position of Romi according to what we can figure out from the accelerometer.
+    */
     float posX;
     float posY;
 
     /**
-     * Immediate acceleration and speed for X and Y axis.
-     */
+       Immediate acceleration and speed for X and Y axis.
+    */
     float curAcceleration_X;
     float curAcceleration_Y;
     float curSpeed_X;
     float curSpeed_Y;
 
     /**
-     * We will want to accumulate position only when the motor is running. In reality we probably should
-     * acuumulate it all the time, but given the noisiness of the sensor and it generally not being
-     * that accurate, this will help us to ignore random spikes.
-     */
+       We will want to accumulate position only when the motor is running. In reality we probably should
+       acuumulate it all the time, but given the noisiness of the sensor and it generally not being
+       that accurate, this will help us to ignore random spikes.
+    */
     boolean motor_is_running;
 
     /**
-     * Function that we'll use to update the pose based on accelerometer data.
-     */
+       Function that we'll use to update the pose based on accelerometer data.
+    */
     void updatePosition(float time_diff);
+
+    unsigned long previous_time;
+    float heading;
 };
 
 #endif

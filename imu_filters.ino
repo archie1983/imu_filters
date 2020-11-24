@@ -13,8 +13,6 @@ float acceleration;
 float vel = 0;
 float pos = 0;
 float time_difference = 100;
-unsigned long previous_time;
-float heading;
 
 void setup()
 {
@@ -39,8 +37,7 @@ void setup()
   analogWrite( L_PWM_PIN, 64 );
   analogWrite( R_PWM_PIN, 64 );
 
-  heading = 0;
-  previous_time = millis();
+  
 }
 
 void loop()
@@ -66,27 +63,8 @@ void loop()
   //    }
   //  }
 
-  unsigned long time_now = millis();
-  unsigned long delta_t = time_now - previous_time;
+  Imu::getImu() -> calcHeading();
 
-  if (delta_t > 100) {
 
-    float GyroZ = Imu::getImu() -> getGz();
-    //    Serial.print(GyroZ);
-    //    Serial.print(",");
-    //    Convert into deg / s
-    float GyroZ_dps = GyroZ / 1000;
-    //    Serial.print(GyroZ_dps);
-    //    Serial.print(",");
-    //    float difference_rateOfchange_Z = previous_GyroZ_dps - GyroZ_dps;
-    //    Serial.print(difference_rateOfchange_Z);
-    //    Serial.print(",");
-    heading += GyroZ_dps * ((float)delta_t / 1000);
-    Serial.println(heading);
-
-    //previous_GyroZ_dps = GyroZ_dps;
-    previous_time = time_now;
-  }
-
-  delay(time_difference);
+  //  delay(time_difference);
 }
