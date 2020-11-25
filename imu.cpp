@@ -21,7 +21,9 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   gyro_refresh_time_us = US_IN_1_S;
 
   imuHardware->enableDefault();
+  delay(10);
   reconfigureAcc(afss, aaaf, asr);
+  delay(10);
   reconfigureGyro(gfss, gsr);
 
   // Wait for IMU readings to stabilize.
@@ -34,21 +36,8 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
 
   /**
      Initialising EMA values with current readings for IMU sensor outputs.
-
-     We want raw values for accelerometer outputs and converted values for
-     gyroscope, because accelerometer converstion factors are all between
-     0 and 1 and gyroscope conversion factors are all greater than 1.
-
-     We're trying to apply EMA on the greatest value- whether that's raw or
-     converter. That should give better effect of EMA.
   */
-  time_since_last_read = 0;
-  prev_Ax_ema_val = getAxRaw() - aXZero;
-  prev_Ay_ema_val = getAyRaw() - aYZero;
-  prev_Az_ema_val = getAzRaw() - aZZero;
-  prev_Gx_ema_val = getGx();
-  prev_Gy_ema_val = getGy();
-  prev_Gz_ema_val = getGz();
+  initialiseEmaValues();
 
   /**
      At the beginning we're going to be at point (0, 0).
@@ -71,6 +60,35 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
 
   heading = 0;
   previous_time = millis();
+}
+
+/**
+ * Set the EMA values to the current readings so that if we're starting EMA values again,
+ * we're not influenced by previous run.
+ */
+void Imu::initialiseEmaValues() {
+  /**
+     Initialising EMA values with current readings for IMU sensor outputs.
+
+     We want raw values for accelerometer outputs and converted values for
+     gyroscope, because accelerometer converstion factors are all between
+     0 and 1 and gyroscope conversion factors are all greater than 1.
+
+     We're trying to apply EMA on the greatest value- whether that's raw or
+     converter. That should give better effect of EMA.
+  */
+//  prev_Ax_ema_val = getAxRaw() - aXZero;
+//  prev_Ay_ema_val = getAyRaw() - aYZero;
+//  prev_Az_ema_val = getAzRaw() - aZZero;
+//  prev_Gx_ema_val = getGx();
+//  prev_Gy_ema_val = getGy();
+//  prev_Gz_ema_val = getGz();
+  prev_Ax_ema_val = aXZero;
+  prev_Ay_ema_val = aYZero;
+  prev_Az_ema_val = aZZero;
+  prev_Gx_ema_val = gXZero;
+  prev_Gy_ema_val = gYZero;
+  prev_Gz_ema_val = gZZero;
 }
 
 /**
@@ -719,6 +737,11 @@ void Imu::initialiseIMU() {
 */
 void Imu::setMotorRunning(boolean motor_running) {
   motor_is_running = motor_running;
+
+  /**
+   * We don't want previous EMA values now.
+   */
+  initialiseEmaValues();
 
   /**
      If we're stopping the motor, then nullify the speed and acceleration too.
