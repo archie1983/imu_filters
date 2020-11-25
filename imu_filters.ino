@@ -90,7 +90,7 @@ void stop_motors(bool notifyIMU) {
   if(notifyIMU) Imu::getImu()->setMotorRunning(false);
 }
 
-float time_difference = 100;
+float time_difference = 10;
 
 void setup()
 {
@@ -149,7 +149,7 @@ void loop()
   if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts > 2000) {
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
-//    Serial.println("STOP");
+    Serial.println("STOP");
   } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 150) {
     changeState(STATE_IDLE);
     stop_motors(true);   // notify IMU
@@ -159,16 +159,15 @@ void loop()
   act_on_commands();
 
   Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
-//  Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
-//  Serial.print(", ");
-  Serial.println(Imu::getImu()->getFilteredAx());
-
-//  Serial.print(RomiPose.getPoseXmm());  //prints distance in m
-//  Serial.print(", ");
-//  Serial.print(Imu::getImu()->getCurrentSpeedX());
-//  Serial.print(", ");
-  
-//  Serial.println(Imu::getImu()->getCurrentAccelerationX());
+  Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
+  Serial.print(", ");
+  Serial.print(RomiPose.getPoseXmm());  //prints distance in m
+  Serial.print(", ");
+  Serial.print(Imu::getImu()->getAx(false));
+  Serial.print(", ");
+  Serial.print(Imu::getImu()->getCurrentSpeedX());
+  Serial.print(", ");  
+  Serial.println(Imu::getImu()->getCurrentAccelerationX());
 
   delay(time_difference);
 }

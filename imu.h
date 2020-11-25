@@ -344,6 +344,12 @@ class Imu {
     void readSensorIfNeeded();
 
     /**
+     * Set the EMA values to the current readings so that if we're starting EMA values again,
+     * we're not influenced by previous run.
+     */
+    void Imu::initialiseEmaValues();
+
+    /**
        Variables needed to store calibration value for axis and gyro speeds.
     */
     float aXZero;
