@@ -90,7 +90,8 @@ ISR( TIMER3_COMPA_vect ) {
   
   // Save speed to global variable.
   r_speed_t3 = (float)diff;
-  //r_speed_t3 *= 10; // 10ms, 100hz 
+  //r_speed_t3 *= 10; // 10ms, 100hz
+  
 }
 
 #endif

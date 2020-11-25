@@ -293,6 +293,8 @@ class Imu {
     */
     float calcHeading();
 
+    float getFilteredAx();
+
   private:
     /**
        Private constructor because we only have 1 IMU which doesn't change.
