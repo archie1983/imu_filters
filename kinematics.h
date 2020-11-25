@@ -19,12 +19,12 @@ class Kinematics_c {
     Kinematics_c::Kinematics_c();
     void update( long e0, long e1 );
     void setPose( float _x, float _y, float _theta );
-
+    float getPoseXmm();
 
   private:
 
     float wheel_sep         = (143 / 2);
-    float wheel_radius      = 35;
+    float wheel_radius      = 35; //35mm
     float rad_per_enc_step  = (TWO_PI / 1440.0);
     float mm_per_enc_step   = 0.15;
 
@@ -117,7 +117,9 @@ void Kinematics_c::update( long e0, long e1 ) {
 
 } // End of update()
 
-
+float Kinematics_c::getPoseXmm(){
+  return x/1000.0;
+}
 
 
 

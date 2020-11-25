@@ -10,7 +10,6 @@
 #include <USBCore.h>    // To fix serial print behaviour bug.
 u8 USB_SendSpace(u8 ep);
 #define SERIAL_ACTIVE (USB_SendSpace(CDC_TX) >= 50)
-Kinematics_c pose;
 
 #define M0_DIR          16  // Motor Pins.
 #define M0_PWM          10
@@ -31,13 +30,13 @@ Kinematics_c pose;
 
 // Speed controller for motors.
 // Using same gains for left and right motors.
-// You may need to recalibrate these.  
+// You may need to recalibrate these.
 #define SPD_PGAIN      1.8
 #define SPD_IGAIN      0.1
 #define SPD_DGAIN     -1.5
 
 // PID controller gains for heading feedback
-// You may need to recalibrate these. 
+// You may need to recalibrate these.
 #define H_PGAIN    0.8
 #define H_IGAIN    0.001
 #define H_DGAIN   -2.5
@@ -57,7 +56,7 @@ unsigned long update_ts;   // Used for timing/flow control for main loop()
 unsigned long behaviour_ts;// Use to track how long a behaviour has run.
 
 float line_confidence = 1.0;  // Line following updates this to indicate how
-                              // well it is achieving line following.
+// well it is achieving line following.
 
 float random_walk_turn = 0;   // our random walk behaviour needs a global variable
 
@@ -70,7 +69,7 @@ float random_walk_turn = 0;   // our random walk behaviour needs a global variab
 #define STATE_RANDOM_WALK     4
 #define STATE_MAX_STATES      5    // used when selecting a random state
 #define STATE_IDLE            6    // used when doing nothing
-#define STATE_BRAKING         7    // used when we've stopped the motors already but assume that unit is still moving forwards.
+#define STATE_BRAKING         7
 int STATE = STATE_DRIVE_STRAIGHT;  // System starts by driving straight
 
 /*
@@ -83,31 +82,24 @@ void beep() {
   delay(150);
 }
 
-void stop_motors(bool notify_imu) {
+void stop_motors(bool notifyIMU) {
   // Make sure motors are off so the robot
   // stays still.
   L_Motor.setPower( 0 );
   R_Motor.setPower( 0 );
-
-  /**
-   * Notify imu if we have to.
-   */
-  if (notify_imu) {
-    Imu::getImu()->setMotorRunning(false);
-  }
+  if(notifyIMU) Imu::getImu()->setMotorRunning(false);
 }
 
 float time_difference = 100;
 
 void setup()
 {
-  // put your setup code here, to run once:
   Serial.begin(9600);
 
   // Wait for serial to connect
   //delay(1500);
   Imu::initialiseIMU(); //# initialisation time of IMU should be enough wait time for serial to connect.
-  
+
   beep(); beep(); beep();
 
   // Print a debug, so we can see a reset on monitor.
@@ -140,6 +132,8 @@ void setup()
   // Set initial state, could be any.
   STATE = STATE_IDLE;
 
+  stop_motors(true);   //not notify IMU
+  
   // Reset PID
   L_PID.reset();
   R_PID.reset();
@@ -148,33 +142,40 @@ void setup()
 
 void loop()
 {
+
   /**
-   * If we've been going straight for over a second, then stop
-   */
-  if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts > 1000) {
-    stop_motors(false); //# stop motors, but don't notify IMU yet, because IMU will still have to measure while we're braking
+     If we've been going straight for over a second, then stop
+  */
+  if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts > 2000) {
+    stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
-    Serial.println("STOP");
-  } else if(STATE == STATE_BRAKING && millis() - behaviour_ts > 150) { //# A wild assumption here that the braking time for our motor power is 150ms
+//    Serial.println("STOP");
+  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 150) {
     changeState(STATE_IDLE);
-    stop_motors(true);
+    stop_motors(true);   // notify IMU
   }
 
+  RomiPose.update(e0_count, e1_count);
   act_on_commands();
 
-  Imu::getImu()->getAx();
-  Serial.print(Imu::getImu()->getCurrentPosX());
-  Serial.print(", ");
-  Serial.print(Imu::getImu()->getCurrentSpeedX());
-  Serial.print(", ");
-  Serial.println(Imu::getImu()->getCurrentAccelerationX());
+  Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
+//  Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
+//  Serial.print(", ");
+  Serial.println(Imu::getImu()->getFilteredAx());
+
+//  Serial.print(RomiPose.getPoseXmm());  //prints distance in m
+//  Serial.print(", ");
+//  Serial.print(Imu::getImu()->getCurrentSpeedX());
+//  Serial.print(", ");
+  
+//  Serial.println(Imu::getImu()->getCurrentAccelerationX());
 
   delay(time_difference);
 }
 
 /**
- * Reads a command from the Serial connection and acts on it
- */
+   Reads a command from the Serial connection and acts on it
+*/
 void act_on_commands() {
   //This line checks whether there is anything to read
   if ( Serial.available() ) {
@@ -263,6 +264,7 @@ void driveStraight( float theta_demand ) {
   float r_pwr = R_PID.update( (fwd_bias + bearing), r_speed_t3 );
 
   Imu::getImu()->setMotorRunning(true);
+
   // Write power to motors.
   L_Motor.setPower(l_pwr);
   R_Motor.setPower(r_pwr);
