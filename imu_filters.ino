@@ -146,7 +146,7 @@ void loop()
   /**
      If we've been going straight for over a second, then stop
   */
-  if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts > 2000) {
+  if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts >  4000) {
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
     Serial.println("STOP");

@@ -29,6 +29,8 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   // Wait for IMU readings to stabilize.
   delay(1000);
 
+  time_since_last_read = 0;
+
   /**
      Calibrate
   */
@@ -560,23 +562,28 @@ void Imu::readSensorIfNeeded() {
   }
 }
 
+float prevAx = 0;
+float curAx = 0;
 void Imu::updatePosition(float time_diff) {
   if (motor_is_running) {
     /**
       WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
       enter eternal recursion. So pass false into those functions.
     */
-    curAcceleration_X = (getAxEmaFiltered(false) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+    curAx = getAx(false);
+    curAcceleration_X = (((curAx + prevAx) / 2) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+
+    prevAx = curAx;
 
     /**
        Dropping noise
     */
-//    if (abs(curAcceleration_X) < 0.05) {
-//      curAcceleration_X = 0;
-//    }
+    if (abs(curAcceleration_X) < 0.05) {
+      curAcceleration_X = 0;
+    }
 
     curSpeed_X = curSpeed_X + (time_diff / US_IN_1_S) * curAcceleration_X; //# converting acceleration to the speed change in m/s and adding to the speed
-
+//
 //    if (abs(curSpeed_X) < 0.01) {
 //      curSpeed_X = 0;
 //    }
@@ -725,7 +732,7 @@ void Imu::initialiseIMU() {
     pinMode(YELLOW_LED, OUTPUT);
     //toggle_led();
     imu = new Imu(Imu::AccFullScaleSelection::AFS_2,
-                  Imu::AccAntiAliasFilter::AA_400,
+                  Imu::AccAntiAliasFilter::AA_50,
                   Imu::AccSampleRate::ASR_104,
                   Imu::GyroFullScaleSelection::GFS_2000,
                   Imu::GyroSampleRate::GSR_104);
@@ -742,6 +749,7 @@ void Imu::setMotorRunning(boolean motor_running) {
    * We don't want previous EMA values now.
    */
   initialiseEmaValues();
+  time_since_last_read = micros() - max(gyro_refresh_time_us, acc_refresh_time_us);
 
   /**
      If we're stopping the motor, then nullify the speed and acceleration too.
