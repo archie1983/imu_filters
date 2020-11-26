@@ -25,7 +25,7 @@ u8 USB_SendSpace(u8 ep);
 
 // Behaviour parameters
 #define LINE_THRESHOLD        280.00  // note! calibrate for your surface.
-#define STRAIGHT_FWD_SPEED      5.0
+#define STRAIGHT_FWD_SPEED      15.0
 #define LINE_FOLLOW_SPEED       4.0
 
 // Speed controller for motors.
@@ -70,7 +70,7 @@ float random_walk_turn = 0;   // our random walk behaviour needs a global variab
 #define STATE_MAX_STATES      5    // used when selecting a random state
 #define STATE_IDLE            6    // used when doing nothing
 #define STATE_BRAKING         7
-int STATE = STATE_DRIVE_STRAIGHT;  // System starts by driving straight
+int STATE = STATE_IDLE;  // System starts by being idle.
 
 /*
    Note, this blocks the flow/timing of your code.  Use sparingly.
@@ -172,6 +172,7 @@ void loop()
   delay(time_difference);
 }
 
+boolean driving_direction = true; //# TRUE for going forward and FALSE for going back.
 /**
    Reads a command from the Serial connection and acts on it
 */
@@ -182,9 +183,18 @@ void act_on_commands() {
 
     if (in_cmd.indexOf("run") > -1) { //# Go straight
       Serial.println("START");
+      driving_direction = true;
       changeState(STATE_DRIVE_STRAIGHT);
       driveStraight( RomiPose.theta );
-    }
+    } else if (in_cmd.indexOf("back") > -1) { //# Go straight
+      Serial.println("START");
+      driving_direction = false;
+      changeState(STATE_DRIVE_STRAIGHT);
+      driveStraight( RomiPose.theta );
+    } else if (in_cmd.indexOf("zero") > -1) { //# Go straight
+      RomiPose.setPose( 0, 0, 0 );
+      Imu::getImu()->setZeroPos();
+    }    
   }
 }
 
@@ -256,7 +266,7 @@ void driveStraight( float theta_demand ) {
   float bearing = H_PID.update( 0, diff );
 
   // Foward speed.
-  float fwd_bias = STRAIGHT_FWD_SPEED;
+  float fwd_bias = (driving_direction ? 1 : -1) * STRAIGHT_FWD_SPEED;
 
   // PID speed control.
   float l_pwr = L_PID.update( (fwd_bias - bearing), l_speed_t3 );

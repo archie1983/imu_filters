@@ -295,6 +295,11 @@ class Imu {
 
     float getFilteredAx();
 
+    /**
+     * Sets pose to (0, 0)
+     */
+    void setZeroPos();
+
   private:
     /**
        Private constructor because we only have 1 IMU which doesn't change.

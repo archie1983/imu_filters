@@ -761,3 +761,13 @@ void Imu::setMotorRunning(boolean motor_running) {
     curSpeed_Y = 0.;
   }
 }
+
+void Imu::setZeroPos() {
+  curAcceleration_X = 0.;
+  curAcceleration_Y = 0.;
+  curSpeed_X = 0.;
+  curSpeed_Y = 0.;  
+
+  posX = 0.;
+  posY = 0.;
+}
