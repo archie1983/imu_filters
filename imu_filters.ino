@@ -74,12 +74,15 @@ int STATE = STATE_DRIVE_STRAIGHT;  // System starts by driving straight
 
 /*
    Note, this blocks the flow/timing of your code.  Use sparingly.
+   Audio indicator to notify boot up sequence
 */
-void beep() {
-  analogWrite(6, 80);
-  delay(150);
-  analogWrite(6, 0);
-  delay(150);
+void beep(int count) {
+  for (int i = 0; i < count; i++) {
+    analogWrite(6, 80);
+    delay(50);
+    analogWrite(6, 0);
+    delay(50);
+  }
 }
 
 void stop_motors(bool notifyIMU) {
@@ -100,7 +103,7 @@ void setup()
   //delay(1500);
   Imu::initialiseIMU(); //# initialisation time of IMU should be enough wait time for serial to connect.
 
-  beep(); beep(); beep();
+  beep(3);
 
   // Print a debug, so we can see a reset on monitor.
   if ( SERIAL_ACTIVE ) Serial.println("***RESET***");
@@ -147,22 +150,22 @@ void loop()
   /**
      If we've been going straight for over a second, then stop
   */
-  //  if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts > 2000) {
-  //    stop_motors(false);   //not notify IMU
-  //    changeState(STATE_BRAKING);
-  ////    Serial.println("STOP");
-  //  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 150) {
-  //    changeState(STATE_IDLE);
-  //    stop_motors(true);   // notify IMU
-  //  }
-  //
-  //  RomiPose.update(e0_count, e1_count);
-  //  act_on_commands();
-  //
-  //  Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
-  ////  Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
-  ////  Serial.print(", ");
-  //  Serial.println(Imu::getImu()->getFilteredAx());
+  if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts > 2000) {
+    stop_motors(false);   //not notify IMU
+    changeState(STATE_BRAKING);
+    //    Serial.println("STOP");
+  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 150) {
+    changeState(STATE_IDLE);
+    stop_motors(true);   // notify IMU
+  }
+
+  RomiPose.update(e0_count, e1_count);
+  act_on_commands();
+
+  Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
+  //  Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
+  //  Serial.print(", ");
+  Serial.println(Imu::getImu()->getFilteredAx());
 
   //  Serial.print(RomiPose.getPoseXmm());  //prints distance in m
   //  Serial.print(", ");
@@ -171,9 +174,7 @@ void loop()
 
   //  Serial.println(Imu::getImu()->getCurrentAccelerationX());
 
-  Serial.println(Imu::getImu()->calcHeading());
-
-  //  delay(time_difference);
+  delay(time_difference);
 }
 
 /**
@@ -204,7 +205,7 @@ void changeState( int which_state ) {
   // Note, this is blocking!
   // But when we transition behaviour it
   // is useful to hear it.
-  beep();
+  beep(1);
 
   // We update the update_ts general time
   update_ts = millis();
