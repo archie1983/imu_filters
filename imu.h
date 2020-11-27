@@ -295,6 +295,11 @@ class Imu {
 
     float getFilteredAx();
 
+    /**
+     * Sets pose to (0, 0)
+     */
+    void setZeroPos();
+
   private:
     /**
        Private constructor because we only have 1 IMU which doesn't change.
@@ -342,6 +347,12 @@ class Imu {
        Reads the sensor via I2C bus if the time since last read has been long enough.
     */
     void readSensorIfNeeded();
+
+    /**
+     * Set the EMA values to the current readings so that if we're starting EMA values again,
+     * we're not influenced by previous run.
+     */
+    void Imu::initialiseEmaValues();
 
     /**
        Variables needed to store calibration value for axis and gyro speeds.
