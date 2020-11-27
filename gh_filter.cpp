@@ -6,7 +6,8 @@ Gh_filter_c::Gh_filter_c() {
   current_time = 0;
   g = 0.5;
   h = 0.1;
-
+  alpha = 0.5;
+  
   current_position = 0.;
   previous_position = 0.;
   estimated_position = 0.;
@@ -19,7 +20,9 @@ Gh_filter_c::Gh_filter_c() {
   
 }
 
-float Gh_filter_c::apply_filter(float new_measurement) {
+float Gh_filter_c::apply_filter(float new_measurement_acc, float new_measurement_enc) {
+
+  float new_measurement = alpha*new_measurement_acc + (1-alpha)*new_measurement_enc;
   
 current_time = micros();
 

@@ -160,7 +160,7 @@ void loop()
   act_on_commands();
 
   Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
-  Serial.print(gh_filter.apply_filter(Imu::getImu()->getCurrentPosX()));
+  Serial.print(gh_filter.apply_filter(Imu::getImu()->getCurrentPosX(), RomiPose.getPoseXmm()));
   Serial.print(",");
   Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
   Serial.print(", ");
