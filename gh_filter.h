@@ -10,7 +10,6 @@ class Gh_filter_c {
 
     float apply_filter(float new_measurement_acc, float new_measurement_enc);
 
-
   private:
 
     float alpha; //parameter needed in complimentary filter
@@ -29,9 +28,6 @@ class Gh_filter_c {
     float estimated_velocity;
 
     float residual;
-
-
-
 };
 
 #endif

@@ -22,25 +22,20 @@ Gh_filter_c::Gh_filter_c() {
 
 float Gh_filter_c::apply_filter(float new_measurement_acc, float new_measurement_enc) {
 
-  float new_measurement = alpha*new_measurement_acc + (1-alpha)*new_measurement_enc;
+  float new_measurement = alpha * new_measurement_acc + (1 - alpha) * new_measurement_enc;
   
-current_time = micros();
-
-
+  current_time = micros();
 
   current_position = previous_position + (current_time - previous_time)*current_velocity;
-
   current_velocity = previous_velocity;
-
   residual = new_measurement - current_position;
 
   current_position += g*residual;
-
   current_velocity += h*residual/(current_time - previous_time);
-
+  
   previous_position = current_position;
-
   previous_velocity = current_velocity;
+  previous_time = current_time;
   
   return current_position;
-  }
+}
