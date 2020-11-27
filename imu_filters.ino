@@ -6,6 +6,7 @@
 #include "pid.h"
 #include "timer3.h"
 #include "utils.h"
+#include "gh_filter.h"
 
 #include <USBCore.h>    // To fix serial print behaviour bug.
 u8 USB_SendSpace(u8 ep);
@@ -49,7 +50,7 @@ PID_c         L_PID( SPD_PGAIN, SPD_IGAIN, SPD_DGAIN );       // Speed control, 
 PID_c         R_PID( SPD_PGAIN, SPD_IGAIN, SPD_DGAIN );       // Speed control, right.
 PID_c         H_PID( H_PGAIN, H_IGAIN, H_DGAIN );             // Position control, angle.
 Kinematics_c  RomiPose;
-
+Gh_filter_c gh_filter;
 
 // Global variables.
 unsigned long update_ts;   // Used for timing/flow control for main loop()
@@ -159,6 +160,8 @@ void loop()
   act_on_commands();
 
   Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
+  Serial.print(gh_filter.apply_filter(Imu::getImu()->getCurrentPosX()));
+  Serial.print(",");
   Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
   Serial.print(", ");
   Serial.print(RomiPose.getPoseXmm());  //prints distance in m
