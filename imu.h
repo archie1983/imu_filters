@@ -74,54 +74,84 @@ class Imu {
     };
 
     /**
-     * Changes the configuration of the Accelerometer.
-     */
+       Changes the configuration of the Accelerometer.
+    */
     void reconfigureAcc(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr);
 
     /**
-     * Changes the configuration of the Gyroscope.
-     */
+       Changes the configuration of the Gyroscope.
+    */
     void reconfigureGyro(GyroFullScaleSelection gfss, GyroSampleRate gsr);
 
     /**
-     * Returns how much time we can allow between measurement updates for accelerometer.
-     */
+       Returns how much time we can allow between measurement updates for accelerometer.
+    */
     unsigned int getAccRefreshRate(AccSampleRate asr);
 
     /**
-     * Returns how much time we can allow between measurement updates for gyro.
-     */
+       Returns how much time we can allow between measurement updates for gyro.
+    */
     unsigned int getGyroRefreshRate(GyroSampleRate gsr);
 
     /**
-       Returns Accelerometer's X axis value converted to mg.
+       Returns Accelerometer's X axis value converted to mg. This function guarantees that hardware will be read.
     */
     float getAx();
 
     /**
-       Returns Accelerometer's Y axis value converted to mg.
+       Returns Accelerometer's Y axis value converted to mg. This function guarantees that hardware will be read.
     */
     float getAy();
 
     /**
-       Returns Accelerometer's Z axis value converted to mg.
+       Returns Accelerometer's Z axis value converted to mg. This function guarantees that hardware will be read.
     */
     float getAz();
 
     /**
-       Returns Gyroscope's X axis value converted to mdps.
+       Returns Gyroscope's X axis value converted to mdps. This function guarantees that hardware will be read.
     */
     float getGx();
 
     /**
-       Returns Gyroscope's Y axis value converted to mdps.
+       Returns Gyroscope's Y axis value converted to mdps. This function guarantees that hardware will be read.
     */
     float getGy();
 
     /**
-       Returns Gyroscope's Z axis value converted to mdps.
+       Returns Gyroscope's Z axis value converted to mdps. This function guarantees that hardware will be read.
     */
     float getGz();
+
+    /**
+       Returns Accelerometer's X axis value converted to mg with or without reading the hardware.
+    */
+    float getAx(bool readHW);
+
+    /**
+       Returns Accelerometer's Y axis value converted to mg with or without reading the hardware.
+    */
+    float getAy(bool readHW);
+
+    /**
+       Returns Accelerometer's Z axis value converted to mg with or without reading the hardware.
+    */
+    float getAz(bool readHW);
+
+    /**
+       Returns Gyroscope's X axis value converted to mdps with or without reading the hardware.
+    */
+    float getGx(bool readHW);
+
+    /**
+       Returns Gyroscope's Y axis value converted to mdps with or without reading the hardware.
+    */
+    float getGy(bool readHW);
+
+    /**
+       Returns Gyroscope's Z axis value converted to mdps with or without reading the hardware.
+    */
+    float getGz(bool readHW);
 
     /**
        Returns Accelerometer's X axis value raw.
@@ -154,6 +184,76 @@ class Imu {
     float getGzRaw();
 
     /**
+       Returns Accelerometer's X axis value EMA filtered. This function guarantees that hardware will be read.
+    */
+    float getAxEmaFiltered();
+
+    /**
+       Returns Accelerometer's Y axis value EMA filtered. This function guarantees that hardware will be read.
+    */
+    float getAyEmaFiltered();
+
+    /**
+       Returns Accelerometer's Z axis value EMA filtered. This function guarantees that hardware will be read.
+    */
+    float getAzEmaFiltered();
+
+    /**
+       Returns Gyroscope's X axis value EMA filtered. This function guarantees that hardware will be read.
+    */
+    float getGxEmaFiltered();
+
+    /**
+       Returns Gyroscope's Y axis value EMA filtered. This function guarantees that hardware will be read.
+    */
+    float getGyEmaFiltered();
+
+    /**
+       Returns Gyroscope's Z axis value EMA filtered. This function guarantees that hardware will be read.
+    */
+    float getGzEmaFiltered();
+
+    /**
+       Returns Accelerometer's X axis value EMA filtered with or without reading the hardware.
+    */
+    float getAxEmaFiltered(bool readHW);
+
+    /**
+       Returns Accelerometer's Y axis value EMA filtered with or without reading the hardware.
+    */
+    float getAyEmaFiltered(bool readHW);
+
+    /**
+       Returns Accelerometer's Z axis value EMA filtered with or without reading the hardware.
+    */
+    float getAzEmaFiltered(bool readHW);
+
+    /**
+       Returns Gyroscope's X axis value EMA filtered with or without reading the hardware.
+    */
+    float getGxEmaFiltered(bool readHW);
+
+    /**
+       Returns Gyroscope's Y axis value EMA filtered with or without reading the hardware.
+    */
+    float getGyEmaFiltered(bool readHW);
+
+    /**
+       Returns Gyroscope's Z axis value EMA filtered with or without reading the hardware.
+    */
+    float getGzEmaFiltered(bool readHW);
+
+    /**
+       Variables required for applying EMA to the IMU outputs.
+    */
+    float prev_Ax_ema_val;
+    float prev_Ay_ema_val;
+    float prev_Az_ema_val;
+    float prev_Gx_ema_val;
+    float prev_Gy_ema_val;
+    float prev_Gz_ema_val;
+
+    /**
        Static getter for this class
     */
     static Imu* getImu();
@@ -169,14 +269,36 @@ class Imu {
     void readAllAxis();
 
     /**
-       Take in a fresh reading for each initialised sensor.
+       Calibrate all axis and all gyroscope velocities.
     */
-    void calibrateGx();
-    void calibrateGz();
+    void calibrateAllReadings();
+
     /**
-     * Returns sensor data
+       A method to tell IMU class when the motor starts running and when it ends.
+    */
+    void setMotorRunning(boolean motor_running);
+
+    /**
+       Current immediate values for speed and acceleration
+    */
+    float getCurrentSpeedX();
+    float getCurrentSpeedY();
+    float getCurrentAccelerationX();
+    float getCurrentAccelerationY();
+    float getCurrentPosX();
+    float getCurrentPosY();
+
+    /**
+       Returns heading angle in degrees
+    */
+    float calcHeading();
+
+    float getFilteredAx();
+
+    /**
+     * Sets pose to (0, 0)
      */
-    float readAx();
+    void setZeroPos();
 
   private:
     /**
@@ -208,28 +330,69 @@ class Imu {
     static void toggle_led();
 
     /**
-     * How many microseconds should we aim to get between reads for accelerometer.
-     */
+       How many microseconds should we aim to get between reads for accelerometer.
+    */
     unsigned int acc_refresh_time_us;
 
     /**
-     * How many microseconds should we aim to get between reads for gyroscope.
-     */
+       How many microseconds should we aim to get between reads for gyroscope.
+    */
     unsigned int gyro_refresh_time_us;
 
     /**
-     * Time in microseconds since our last read.
-     */
+       Time in microseconds since our last read.
+    */
     long time_since_last_read;
     /**
-     * Reads the sensor via I2C bus if the time since last read has been long enough.
-     */
+       Reads the sensor via I2C bus if the time since last read has been long enough.
+    */
     void readSensorIfNeeded();
 
-    float totalGx;
+    /**
+     * Set the EMA values to the current readings so that if we're starting EMA values again,
+     * we're not influenced by previous run.
+     */
+    void Imu::initialiseEmaValues();
+
+    /**
+       Variables needed to store calibration value for axis and gyro speeds.
+    */
+    float aXZero;
+    float aYZero;
+    float aZZero;
     float gXZero;
-    float totalGz;
+    float gYZero;
     float gZZero;
+
+
+    /**
+       Position of Romi according to what we can figure out from the accelerometer.
+    */
+    float posX;
+    float posY;
+
+    /**
+       Immediate acceleration and speed for X and Y axis.
+    */
+    float curAcceleration_X;
+    float curAcceleration_Y;
+    float curSpeed_X;
+    float curSpeed_Y;
+
+    /**
+       We will want to accumulate position only when the motor is running. In reality we probably should
+       acuumulate it all the time, but given the noisiness of the sensor and it generally not being
+       that accurate, this will help us to ignore random spikes.
+    */
+    boolean motor_is_running;
+
+    /**
+       Function that we'll use to update the pose based on accelerometer data.
+    */
+    void updatePosition(float time_diff);
+
+    unsigned long previous_time;
+    float heading;
 };
 
 #endif
