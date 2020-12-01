@@ -72,6 +72,7 @@ float random_walk_turn = 0;   // our random walk behaviour needs a global variab
 #define STATE_IDLE            6    // used when doing nothing
 #define STATE_BRAKING         7
 int STATE = STATE_IDLE;  // System starts by being idle.
+float ghfilterPos = 0;
 
 /*
    Note, this blocks the flow/timing of your code.  Use sparingly.
@@ -150,7 +151,7 @@ void loop()
   /**
      If we've been going straight for over a second, then stop
   */
-  if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts >  4000) {
+  if (STATE == STATE_DRIVE_STRAIGHT && abs(ghfilterPos) >= 0.1) {
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
     Serial.println("STOP");
@@ -163,17 +164,18 @@ void loop()
   act_on_commands();
 
   Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
-  Serial.print(gh_filter.apply_filter(Imu::getImu()->getCurrentPosX(), RomiPose.getPoseXmm()));
+  ghfilterPos = gh_filter.apply_filter(Imu::getImu()->getCurrentPosX(), RomiPose.getPoseXmm());
+  Serial.print(ghfilterPos);
   Serial.print(",");
   Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
   Serial.print(", ");
-  Serial.print(RomiPose.getPoseXmm());  //prints distance in m
-  Serial.print(", ");
-  Serial.print(Imu::getImu()->getAx(false));
-  Serial.print(", ");
-  Serial.print(Imu::getImu()->getCurrentSpeedX());
-  Serial.print(", ");  
-  Serial.println(Imu::getImu()->getCurrentAccelerationX());
+  Serial.println(RomiPose.getPoseXmm());  //prints distance in m
+//  Serial.print(", ");
+//  Serial.print(Imu::getImu()->getAx(false));
+//  Serial.print(", ");
+//  Serial.print(Imu::getImu()->getCurrentSpeedX());
+//  Serial.print(", ");  
+//  Serial.println(Imu::getImu()->getCurrentAccelerationX());
 
   delay(time_difference);
 }

@@ -21,11 +21,8 @@ class Gh_filter_c {
 
     float current_position;
     float previous_position;
-    float estimated_position;
 
-    float current_velocity;
-    float previous_velocity;
-    float estimated_velocity;
+    float velocity;
 
     float residual;
 };
