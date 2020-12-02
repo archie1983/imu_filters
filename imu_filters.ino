@@ -75,15 +75,19 @@ float random_walk_turn = 0;   // our random walk behaviour needs a global variab
 #define STATE_IDLE            6    // used when doing nothing
 #define STATE_BRAKING         7
 int STATE = STATE_IDLE;  // System starts by being idle.
+float ghfilterPos = 0;
 
 /*
    Note, this blocks the flow/timing of your code.  Use sparingly.
+   Audio indicator to notify boot up sequence
 */
-void beep() {
-  analogWrite(6, 80);
-  delay(150);
-  analogWrite(6, 0);
-  delay(150);
+void beep(int count) {
+  for (int i = 0; i < count; i++) {
+    analogWrite(6, 80);
+    delay(50);
+    analogWrite(6, 0);
+    delay(50);
+  }
 }
 
 void stop_motors(bool notifyIMU) {
@@ -91,7 +95,7 @@ void stop_motors(bool notifyIMU) {
   // stays still.
   L_Motor.setPower( 0 );
   R_Motor.setPower( 0 );
-  if(notifyIMU) Imu::getImu()->setMotorRunning(false);
+  if (notifyIMU) Imu::getImu()->setMotorRunning(false);
 }
 
 float time_difference = 10;
@@ -104,7 +108,7 @@ void setup()
   //delay(1500);
   Imu::initialiseIMU(); //# initialisation time of IMU should be enough wait time for serial to connect.
 
-  beep(); beep(); beep();
+  beep(3);
 
   // Print a debug, so we can see a reset on monitor.
   if ( SERIAL_ACTIVE ) Serial.println("***RESET***");
@@ -137,7 +141,7 @@ void setup()
   STATE = STATE_IDLE;
 
   stop_motors(true);   //not notify IMU
-  
+
   // Reset PID
   L_PID.reset();
   R_PID.reset();
@@ -150,7 +154,7 @@ void loop()
   /**
      If we've been going straight for over a second, then stop
   */
-  if (STATE == STATE_DRIVE_STRAIGHT && millis() - behaviour_ts >  4000) {
+  if (STATE == STATE_DRIVE_STRAIGHT && abs(ghfilterPos) >= 0.1) {
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
     Serial.println("STOP");
@@ -163,17 +167,18 @@ void loop()
   act_on_commands();
 
   Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
-  Serial.print(gh_filter.apply_filter(Imu::getImu()->getCurrentPosX(), RomiPose.getPoseXmm()));
-  Serial.print(", ");
+  ghfilterPos = gh_filter.apply_filter(Imu::getImu()->getCurrentPosX(), RomiPose.getPoseXmm());
+  Serial.print(ghfilterPos);
+  Serial.print(",");
   Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
   Serial.print(", ");
-  Serial.print(RomiPose.getPoseX());  //prints distance in m
-  Serial.print(", ");
-  Serial.print(Imu::getImu()->getAx(false));
-  Serial.print(", ");
-  Serial.print(Imu::getImu()->getCurrentSpeedX());
-  Serial.print(", ");  
-  Serial.println(Imu::getImu()->getCurrentAccelerationX());
+  Serial.println(RomiPose.getPoseXmm());  //prints distance in m
+//  Serial.print(", ");
+//  Serial.print(Imu::getImu()->getAx(false));
+//  Serial.print(", ");
+//  Serial.print(Imu::getImu()->getCurrentSpeedX());
+//  Serial.print(", ");  
+//  Serial.println(Imu::getImu()->getCurrentAccelerationX());
 
   delay(time_difference);
 }
@@ -216,7 +221,7 @@ void changeState( int which_state ) {
   // Note, this is blocking!
   // But when we transition behaviour it
   // is useful to hear it.
-  beep();
+  beep(1);
 
   // We update the update_ts general time
   update_ts = millis();
