@@ -26,15 +26,18 @@ u8 USB_SendSpace(u8 ep);
 
 // Behaviour parameters
 #define LINE_THRESHOLD        280.00  // note! calibrate for your surface.
-#define STRAIGHT_FWD_SPEED      15.0
+#define STRAIGHT_FWD_SPEED      7.5
 #define LINE_FOLLOW_SPEED       4.0
 
 // Speed controller for motors.
 // Using same gains for left and right motors.
 // You may need to recalibrate these.
-#define SPD_PGAIN      1.8
-#define SPD_IGAIN      0.1
-#define SPD_DGAIN     -1.5
+//#define SPD_PGAIN      1.8
+//#define SPD_IGAIN      0.1
+//#define SPD_DGAIN     -1.5
+#define SPD_PGAIN      0.8
+#define SPD_IGAIN      0.004
+#define SPD_DGAIN      -6.5
 
 // PID controller gains for heading feedback
 // You may need to recalibrate these.
@@ -161,10 +164,10 @@ void loop()
 
   Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
   Serial.print(gh_filter.apply_filter(Imu::getImu()->getCurrentPosX(), RomiPose.getPoseXmm()));
-  Serial.print(",");
+  Serial.print(", ");
   Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
   Serial.print(", ");
-  Serial.print(RomiPose.getPoseXmm());  //prints distance in m
+  Serial.print(RomiPose.getPoseX());  //prints distance in m
   Serial.print(", ");
   Serial.print(Imu::getImu()->getAx(false));
   Serial.print(", ");

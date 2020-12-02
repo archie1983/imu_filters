@@ -19,7 +19,7 @@ class Kinematics_c {
     Kinematics_c::Kinematics_c();
     void update( long e0, long e1 );
     void setPose( float _x, float _y, float _theta );
-    float getPoseXmm();
+    float getPoseX();
 
   private:
 
@@ -117,7 +117,7 @@ void Kinematics_c::update( long e0, long e1 ) {
 
 } // End of update()
 
-float Kinematics_c::getPoseXmm(){
+float Kinematics_c::getPoseX(){
   return x/1000.0;
 }
 
