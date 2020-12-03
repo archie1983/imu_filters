@@ -20,11 +20,12 @@ class Kinematics_c {
     void update( long e0, long e1 );
     void setPose( float _x, float _y, float _theta );
     float getPoseX();
+    float getPoseXmm();
 
   private:
 
     float wheel_sep         = (143 / 2);
-    float wheel_radius      = 35; //With rubber tyres: 35, without: 32.5 - all in mm
+    float wheel_radius      = 32.5; //With rubber tyres: 35, without: 32.5 - all in mm
     float rad_per_enc_step  = (TWO_PI / 1440.0);
     float mm_per_enc_step   = 0.15;
 
@@ -121,6 +122,9 @@ float Kinematics_c::getPoseX(){
   return x/1000.0;
 }
 
+float Kinematics_c::getPoseXmm(){
+  return x;
+}
 
 
 #endif

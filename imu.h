@@ -286,6 +286,7 @@ class Imu {
     float getCurrentAccelerationX();
     float getCurrentAccelerationY();
     float getCurrentPosX();
+    float getCurrentPosXmm();
     float getCurrentPosY();
 
     /**
@@ -296,9 +297,25 @@ class Imu {
     float getFilteredAx();
 
     /**
+     * Returns the maximum calibration value seen.
+     */
+    float getAxZero_max();
+
+    /**
+     * Returns the minimum calibration value seen.
+     */
+    float getAxZero_min();
+
+    /**
      * Sets pose to (0, 0)
      */
     void setZeroPos();
+
+    /**
+     * Returns number of microsedonds after which a new value will be available. We want to
+     * update IMU position after this many us have elapsed.
+     */
+    unsigned int getAccRefreshTime();
 
   private:
     /**
@@ -352,7 +369,7 @@ class Imu {
      * Set the EMA values to the current readings so that if we're starting EMA values again,
      * we're not influenced by previous run.
      */
-    void Imu::initialiseEmaValues();
+    void initialiseEmaValues();
 
     /**
        Variables needed to store calibration value for axis and gyro speeds.
@@ -364,6 +381,12 @@ class Imu {
     float gYZero;
     float gZZero;
 
+    /**
+     * When calibrating X axis, we'll take the minimum value that we've seen while stationary and the maximum.
+     * Then if we see anything between these values, we'll ignore it.
+     */
+    float aXZero_min;
+    float aXZero_max;
 
     /**
        Position of Romi according to what we can figure out from the accelerometer.

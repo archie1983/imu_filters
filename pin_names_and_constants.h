@@ -15,7 +15,7 @@
 /**
  * Alpha factors for EMA filtering acceleromter and gyroscope values.
  */
-#define ACC_ALPHA_4_EMA 0.5
+#define ACC_ALPHA_4_EMA 0.2
 #define GYRO_ALPHA_4_EMA 0.5
 
 /**
@@ -28,4 +28,9 @@
 */
 #define YELLOW_LED 13
 
+/**
+ * Time constraints for IMU and others
+ */
+#define TIME_TO_UPDATE_FILTERED_POSE 5000 //# We'll update our filter every this many microseconds
+#define TIME_TO_PRINT_POSE 100000 //# We'll print our poses every this many microseconds
 #endif

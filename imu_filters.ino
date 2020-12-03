@@ -77,6 +77,17 @@ float random_walk_turn = 0;   // our random walk behaviour needs a global variab
 int STATE = STATE_IDLE;  // System starts by being idle.
 float ghfilterPos = 0;
 
+/**
+ * Variables to ensure timed execution of various processes
+ */
+unsigned long last_imu_read_time = 0;
+unsigned long update_time_for_imu = 0;
+
+unsigned long last_filter_update_time = 0;
+unsigned long last_pose_print_time = 0;
+
+unsigned long time_now = 0;
+
 /*
    Note, this blocks the flow/timing of your code.  Use sparingly.
    Audio indicator to notify boot up sequence
@@ -97,8 +108,6 @@ void stop_motors(bool notifyIMU) {
   R_Motor.setPower( 0 );
   if (notifyIMU) Imu::getImu()->setMotorRunning(false);
 }
-
-float time_difference = 10;
 
 void setup()
 {
@@ -146,41 +155,85 @@ void setup()
   L_PID.reset();
   R_PID.reset();
   H_PID.reset();
+
+  update_time_for_imu = Imu::getImu()->getAccRefreshTime();
 }
+
+/**
+ * We'll be switching which data we feed to the sensor fusion algorithm. On one cycle we'll
+ * be feeding in IMU data and on next it should be Kinematics pose data.
+ */
+bool kinematics_or_imu_data = false;
 
 void loop()
 {
-
   /**
      If we've been going straight for over a second, then stop
   */
-  if (STATE == STATE_DRIVE_STRAIGHT && abs(ghfilterPos) >= 0.1) {
+  if (STATE == STATE_DRIVE_STRAIGHT && RomiPose.getPoseXmm() >=100) {//abs(ghfilterPos) >= 0.5) {
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
     Serial.println("STOP");
-  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 150) {
+  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 10) {
     changeState(STATE_IDLE);
     stop_motors(true);   // notify IMU
   }
 
-  RomiPose.update(e0_count, e1_count);
-  act_on_commands();
+  /**
+   * Below this line we'll be branching based on time constraints
+   */
+  time_now = micros();  
 
-  Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
-  ghfilterPos = gh_filter.apply_filter(Imu::getImu()->getCurrentPosX(), RomiPose.getPoseXmm());
-  Serial.print(ghfilterPos);
-  Serial.print(",");
-  Serial.print(Imu::getImu()->getCurrentPosX());  //prints distance in m
-  Serial.print(", ");
-  Serial.println(RomiPose.getPoseXmm());  //prints distance in m
-//  Serial.print(", ");
-//  Serial.print(Imu::getImu()->getAx(false));
-//  Serial.print(", ");
-//  Serial.print(Imu::getImu()->getCurrentSpeedX());
-//  Serial.print(", ");  
-//  Serial.println(Imu::getImu()->getCurrentAccelerationX());
+  if (time_now - last_imu_read_time > update_time_for_imu) {
+    Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
+    last_imu_read_time = time_now;
+  }
 
-  delay(time_difference);
+  if (time_now - last_filter_update_time > TIME_TO_UPDATE_FILTERED_POSE) {
+    RomiPose.update(e0_count, e1_count);
+    ghfilterPos = gh_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(), RomiPose.getPoseXmm());
+    last_filter_update_time = time_now;
+
+//  if (kinematics_or_imu_data) {
+//    ghfilterPos = gh_filter.apply_filter(RomiPose.getPoseXmm());
+//  } else {
+//    ghfilterPos = gh_filter.apply_filter(Imu::getImu()->getCurrentPosXmm());
+//  }
+//
+//  kinematics_or_imu_data = !kinematics_or_imu_data;
+    
+  }
+
+  if ((STATE != STATE_IDLE && time_now - last_pose_print_time > TIME_TO_PRINT_POSE) ||
+      time_now - last_pose_print_time > TIME_TO_PRINT_POSE * 1) {
+//    Serial.print(ghfilterPos);
+//    Serial.print(",");
+//    Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
+//    Serial.print(", ");
+//    Serial.println(RomiPose.getPoseXmm());  //prints distance in m
+
+//  Serial.print(", ");
+    Serial.print(Imu::getImu()->getAxEmaFiltered(false));
+    Serial.print(", ");
+//    Serial.print(Imu::getImu()->getAxZero_min());
+//    Serial.print(", ");
+//    Serial.print(Imu::getImu()->getAxZero_max());
+//    Serial.print(", ");
+    Serial.print(ghfilterPos);
+    Serial.print(", ");
+    Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
+    Serial.print(", ");
+    Serial.print(RomiPose.getPoseXmm());  //prints distance in m
+    Serial.print(", ");
+    Serial.print(Imu::getImu()->getCurrentSpeedX());
+    Serial.print(", ");  
+    Serial.println(Imu::getImu()->getCurrentAccelerationX());
+    
+    last_pose_print_time = time_now;
+
+    act_on_commands();
+  }
+  delay(10);
 }
 
 boolean driving_direction = true; //# TRUE for going forward and FALSE for going back.

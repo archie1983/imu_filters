@@ -18,11 +18,23 @@ Gh_filter_c::Gh_filter_c() {
   residual = 0.;
 }
 
+/**
+ * Receive both inputs- from IMU and from encoders, then condition them and apply
+ * the filter.
+ */
 float Gh_filter_c::apply_filter(float new_measurement_acc, float new_measurement_enc) {
 
   // complementary filter used to calculate current velocity from sensors
   float new_measurement = alpha * new_measurement_acc + (1 - alpha) * new_measurement_enc;
 
+  return apply_filter(new_measurement);
+}
+
+/**
+ * Receive just one input- either from the IMU or encoders and then apply the filter
+ * just on that input.
+ */
+float Gh_filter_c::apply_filter(float new_measurement) {
   current_time = micros();
   
   // predict current position based on previous data

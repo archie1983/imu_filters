@@ -374,7 +374,29 @@ float Imu::getGz() {
    Returns Accelerometer's X axis value raw.
 */
 float Imu::getAxRaw() {
-  return imuHardware->a.x;
+  float ax = imuHardware->a.x;
+  //return ax;
+  if (ax > aXZero_max) {
+    return ax;
+  } else if (ax < aXZero_min) {
+    return ax;
+  } else {
+    return 0;
+  }
+}
+
+/**
+ * Returns the maximum calibration value seen.
+ */
+float Imu::getAxZero_max() {
+  return aXZero_max;
+}
+
+/**
+ * Returns the minimum calibration value seen.
+ */
+float Imu::getAxZero_min() {
+  return aXZero_min;
 }
 
 /**
@@ -562,6 +584,14 @@ void Imu::readSensorIfNeeded() {
   }
 }
 
+/**
+ * Returns number of microsedonds after which a new value will be available. We want to
+ * update IMU position after this many us have elapsed.
+ */
+unsigned int Imu::getAccRefreshTime() {
+  return acc_refresh_time_us;
+}
+
 float prevAx = 0;
 float curAx = 0;
 void Imu::updatePosition(float time_diff) {
@@ -571,7 +601,8 @@ void Imu::updatePosition(float time_diff) {
       enter eternal recursion. So pass false into those functions.
     */
     curAx = getAx(false);
-    curAcceleration_X = (((curAx + prevAx) / 2) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+    //curAcceleration_X = (((curAx + prevAx) / 2) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+    curAcceleration_X = (curAx / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
 
     prevAx = curAx;
 
@@ -590,9 +621,9 @@ void Imu::updatePosition(float time_diff) {
 
     posX = posX + (time_diff / US_IN_1_S) * curSpeed_X; //# converting position to m
 
-    curAcceleration_Y = (getAyEmaFiltered(false) / 1000.0) * GRAVITY_CONSTANT;
-    curSpeed_Y = curSpeed_Y + (time_diff / US_IN_1_S) * curAcceleration_Y;
-    posY = posY + (time_diff / US_IN_1_S) * curSpeed_Y;
+//    curAcceleration_Y = (getAyEmaFiltered(false) / 1000.0) * GRAVITY_CONSTANT;
+//    curSpeed_Y = curSpeed_Y + (time_diff / US_IN_1_S) * curAcceleration_Y;
+//    posY = posY + (time_diff / US_IN_1_S) * curSpeed_Y;
   }
 }
 
@@ -634,6 +665,10 @@ float Imu::getCurrentAccelerationY() {
 
 float Imu::getCurrentPosX() {
   return posX;
+}
+
+float Imu::getCurrentPosXmm() {
+  return posX * 1000;
 }
 
 float Imu::getCurrentPosY() {
@@ -678,6 +713,9 @@ void Imu::calibrateAllReadings() {
   gYZero = 0;
   gZZero = 0;
 
+  aXZero_min = 10000;
+  aXZero_max = -10000;
+
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
     imuHardware->read();
@@ -687,6 +725,21 @@ void Imu::calibrateAllReadings() {
     totalGx += imuHardware->g.x * gyro_sensitivity_conversion_factor;
     totalGy += imuHardware->g.y * gyro_sensitivity_conversion_factor;
     totalGz += imuHardware->g.z * gyro_sensitivity_conversion_factor;
+
+    /**
+     * getting minimum value seen during calibration
+     */
+    if (aXZero_min > imuHardware->a.x) {
+      aXZero_min = imuHardware->a.x;
+    }
+
+    /**
+     * getting max value seen during calibration
+     */
+    if (aXZero_max < imuHardware->a.x) {
+      aXZero_max = imuHardware->a.x;
+    }
+    
     delay(max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0);
   }
   //gXZero already multiplied by sensitivity
@@ -724,7 +777,7 @@ void Imu::initialiseIMU() {
   if (imu == NULL) {
     pinMode(YELLOW_LED, OUTPUT);
     //toggle_led();
-    imu = new Imu(Imu::AccFullScaleSelection::AFS_2,
+    imu = new Imu(Imu::AccFullScaleSelection::AFS_8,
                   Imu::AccAntiAliasFilter::AA_50,
                   Imu::AccSampleRate::ASR_104,
                   Imu::GyroFullScaleSelection::GFS_2000,

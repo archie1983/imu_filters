@@ -8,7 +8,17 @@ class Gh_filter_c {
 
     Gh_filter_c();
 
+    /**
+     * Receive both inputs- from IMU and from encoders, then condition them and apply
+     * the filter.
+     */
     float apply_filter(float new_measurement_acc, float new_measurement_enc);
+
+    /**
+     * Receive just one input- either from the IMU or encoders and then apply the filter
+     * just on that input.
+     */
+    float apply_filter(float new_measurement);
 
   private:
 
