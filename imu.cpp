@@ -20,11 +20,13 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   acc_refresh_time_us = US_IN_1_S;
   gyro_refresh_time_us = US_IN_1_S;
 
-  imuHardware->enableDefault();
-  delay(10);
+  //imuHardware->enableDefault();
   reconfigureAcc(afss, aaaf, asr);
-  delay(10);
   reconfigureGyro(gfss, gsr);
+
+  // No idea why this is needed, but it's what they do in the library code when configuring the defaults after both Acc and Gyro registers have been written.
+  // IF_INC = 1 (automatically increment register address)
+  imuHardware->writeReg(LSM6::CTRL3_C, 0x04);
 
   // Wait for IMU readings to stabilize.
   delay(1000);
@@ -572,8 +574,15 @@ void Imu::readSensorIfNeeded() {
   */
   long time_diff = micros() - time_since_last_read;
   if (imuHardware != NULL && (time_diff > acc_refresh_time_us || time_diff > gyro_refresh_time_us)) {
-    toggle_led();
-    imuHardware->read();
+//    toggle_led();
+//    long now_t = micros();
+//    Serial.print("B: ");
+//    Serial.print(now_t);
+    imuHardware->readAcc();
+//    Serial.print(" A: ");
+//    Serial.print(micros() - now_t);
+//    Serial.print(" # ");
+//    Serial.println(imuHardware->a.x);
 
     /**
        If we're reading in a new batch of values, then we may want to update our pose based on that
@@ -778,10 +787,10 @@ void Imu::initialiseIMU() {
     pinMode(YELLOW_LED, OUTPUT);
     //toggle_led();
     imu = new Imu(Imu::AccFullScaleSelection::AFS_8,
-                  Imu::AccAntiAliasFilter::AA_50,
-                  Imu::AccSampleRate::ASR_104,
+                  Imu::AccAntiAliasFilter::AA_200,
+                  Imu::AccSampleRate::ASR_416,
                   Imu::GyroFullScaleSelection::GFS_2000,
-                  Imu::GyroSampleRate::GSR_104);
+                  Imu::GyroSampleRate::GSR_416);
   }
 }
 
