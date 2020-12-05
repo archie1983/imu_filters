@@ -254,7 +254,7 @@ float Imu::getAx(bool readHW) {
     if (readHW) {
       readSensorIfNeeded();
     }
-    return (getAxRaw() - aXZero)  * acc_sensitivity_conversion_factor;
+    return getAxRawCompensated()  * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
   }
@@ -376,12 +376,19 @@ float Imu::getGz() {
    Returns Accelerometer's X axis value raw.
 */
 float Imu::getAxRaw() {
+  return imuHardware->a.x;
+}
+
+/**
+   Returns Accelerometer's X axis value raw.
+*/
+float Imu::getAxRawCompensated() {
   float ax = imuHardware->a.x;
-  //return ax;
+//  return ax;
   if (ax > aXZero_max) {
-    return ax;
+    return ax - aXZero_max - aXZero;
   } else if (ax < aXZero_min) {
-    return ax;
+    return ax - aXZero_min - aXZero;
   } else {
     return 0;
   }
@@ -446,7 +453,7 @@ float Imu::getAxEmaFiltered(bool readHW) {
       readSensorIfNeeded();
     }
 
-    float current_EMA_val = ((getAxRaw() - aXZero) * ACC_ALPHA_4_EMA) + (1 - ACC_ALPHA_4_EMA) * prev_Ax_ema_val;
+    float current_EMA_val = getAxRawCompensated() * ACC_ALPHA_4_EMA + (1 - ACC_ALPHA_4_EMA) * prev_Ax_ema_val;
     prev_Ax_ema_val = current_EMA_val;
 
     return current_EMA_val * acc_sensitivity_conversion_factor;
@@ -572,7 +579,8 @@ void Imu::readSensorIfNeeded() {
   /**
      If our hardware is not NULL and either gyro or accelerometer is due for a read, then read.
   */
-  long time_diff = micros() - time_since_last_read;
+  long time_now = micros();
+  long time_diff = time_now - time_since_last_read;
   if (imuHardware != NULL && (time_diff > acc_refresh_time_us || time_diff > gyro_refresh_time_us)) {
 //    toggle_led();
 //    long now_t = micros();
@@ -589,7 +597,7 @@ void Imu::readSensorIfNeeded() {
     */
     updatePosition(time_diff);
 
-    time_since_last_read = micros();
+    time_since_last_read = time_now;
   }
 }
 
@@ -709,6 +717,76 @@ void Imu::toggle_led() {
 
 void Imu::calibrateAllReadings() {
   long long totalAx = 0.;
+
+  aXZero = 0;
+
+  aXZero_min = 10000;
+  aXZero_max = -10000;
+
+  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
+  {
+    imuHardware->readAcc();
+    
+    /**
+     * getting minimum value seen during calibration
+     */
+    if (aXZero_min > imuHardware->a.x) {
+      aXZero_min = imuHardware->a.x;
+    }
+
+    /**
+     * getting max value seen during calibration
+     */
+    if (aXZero_max < imuHardware->a.x) {
+      aXZero_max = imuHardware->a.x;
+    }
+    
+    delay((max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0) + 2);
+  }
+
+  /**
+   * Finding the middle value between the highest and lowest seen
+   */
+  aXZero = (aXZero_max + aXZero_min) / 2;
+
+  /**
+   * Now find the mean value for all readings above axZero and below axZero.
+   */
+  aXZero_max = 0.;
+  aXZero_min = 0.;
+  for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
+  {
+    imuHardware->readAcc();
+    totalAx += imuHardware->a.x;
+    
+    /**
+     * getting minimum value seen during calibration
+     */
+    if (imuHardware->a.x > aXZero) {
+      aXZero_max += imuHardware->a.x;
+    }
+
+    /**
+     * getting max value seen during calibration
+     */
+    if (imuHardware->a.x < aXZero) {
+      aXZero_min += imuHardware->a.x;
+    }
+    
+    delay((max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0) + 2);
+  }
+  
+  aXZero_max = aXZero_max / CALIBRATION_ITERATIONS;
+  aXZero_min = aXZero_min / CALIBRATION_ITERATIONS;
+
+
+  aXZero = 0; //# switch off the previous style calibration
+  //aXZero_min = -60; //# overriding with experimental value
+  //aXZero_max = 60; //# overriding with experimental value
+}
+
+void Imu::calibrateAllReadings1() {
+  long long totalAx = 0.;
   long long totalAy = 0.;
   long long totalAz = 0.;
   long long totalGx = 0.;
@@ -749,7 +827,7 @@ void Imu::calibrateAllReadings() {
       aXZero_max = imuHardware->a.x;
     }
     
-    delay(max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0);
+    delay((max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0) + 2);
   }
   //gXZero already multiplied by sensitivity
   gXZero = totalGx / CALIBRATION_ITERATIONS;
@@ -758,6 +836,10 @@ void Imu::calibrateAllReadings() {
   aXZero = totalAx / CALIBRATION_ITERATIONS;
   aYZero = totalAy / CALIBRATION_ITERATIONS;
   aZZero = totalAz / CALIBRATION_ITERATIONS;
+
+  aXZero = 0; //# switch off the previous style calibration
+  //aXZero_min = -60; //# overriding with experimental value
+  //aXZero_max = 60; //# overriding with experimental value
 }
 
 float Imu::calcHeading() {
@@ -817,7 +899,7 @@ void Imu::setMotorRunning(boolean motor_running) {
   }
 }
 
-void Imu::setZeroPos() {
+void Imu::setZeroPos(bool recalib) {
   curAcceleration_X = 0.;
   curAcceleration_Y = 0.;
   curSpeed_X = 0.;
@@ -825,4 +907,11 @@ void Imu::setZeroPos() {
 
   posX = 0.;
   posY = 0.;
+
+  /*
+   * And re-calibrate it too if needed
+   */
+  if (recalib) {
+    calibrateAllReadings();
+  }
 }

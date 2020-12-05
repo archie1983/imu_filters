@@ -10,7 +10,7 @@
  * Amount of microseconds in a second.
  */
 #define US_IN_1_S 1000000.0
-#define CALIBRATION_ITERATIONS 100
+#define CALIBRATION_ITERATIONS 1000
 
 /**
  * Alpha factors for EMA filtering acceleromter and gyroscope values.

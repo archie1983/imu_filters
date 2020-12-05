@@ -26,7 +26,7 @@ u8 USB_SendSpace(u8 ep);
 
 // Behaviour parameters
 #define LINE_THRESHOLD        280.00  // note! calibrate for your surface.
-#define STRAIGHT_FWD_SPEED      7.5
+#define STRAIGHT_FWD_SPEED       30
 #define LINE_FOLLOW_SPEED       4.0
 
 // Speed controller for motors.
@@ -53,7 +53,7 @@ PID_c         L_PID( SPD_PGAIN, SPD_IGAIN, SPD_DGAIN );       // Speed control, 
 PID_c         R_PID( SPD_PGAIN, SPD_IGAIN, SPD_DGAIN );       // Speed control, right.
 PID_c         H_PID( H_PGAIN, H_IGAIN, H_DGAIN );             // Position control, angle.
 Kinematics_c  RomiPose;
-Gh_filter_c gh_filter;
+Gh_filter_c gh_filter(0.5, 0.1);
 
 // Global variables.
 unsigned long update_ts;   // Used for timing/flow control for main loop()
@@ -170,11 +170,11 @@ void loop()
   /**
      If we've been going straight for over a second, then stop
   */
-  if (STATE == STATE_DRIVE_STRAIGHT && RomiPose.getPoseXmm() >= 100) {//abs(ghfilterPos) >= 0.5) {
+  if (STATE == STATE_DRIVE_STRAIGHT && RomiPose.getPoseXmm() >= 500) {//abs(ghfilterPos) >= 0.5) {
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
     Serial.println("STOP");
-  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 10) {
+  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 150) {
     changeState(STATE_IDLE);
     stop_motors(true);   // notify IMU
   }
@@ -213,12 +213,11 @@ void loop()
 //    Serial.println(RomiPose.getPoseXmm());  //prints distance in m
 
 //  Serial.print(", ");
-    Serial.print(Imu::getImu()->getAxEmaFiltered(false));
+    //Serial.print(Imu::getImu()->getAxEmaFiltered(false));
+    Serial.print(Imu::getImu()->getAxRaw());
     Serial.print(", ");
-//    Serial.print(Imu::getImu()->getAxZero_min());
-//    Serial.print(", ");
-//    Serial.print(Imu::getImu()->getAxZero_max());
-//    Serial.print(", ");
+    Serial.print(Imu::getImu()->getAxRawCompensated());
+    Serial.print(", ");
     Serial.print(ghfilterPos);
     Serial.print(", ");
     Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
@@ -233,7 +232,7 @@ void loop()
 
     act_on_commands();
   }
-  delay(5);
+  //delay(5);
 }
 
 boolean driving_direction = true; //# TRUE for going forward and FALSE for going back.
@@ -249,16 +248,26 @@ void act_on_commands() {
       Serial.println("START");
       driving_direction = true;
       changeState(STATE_DRIVE_STRAIGHT);
-      driveStraight( RomiPose.theta );
+      driveStraight();
     } else if (in_cmd.indexOf("back") > -1) { //# Go straight
       Serial.println("START");
       driving_direction = false;
       changeState(STATE_DRIVE_STRAIGHT);
-      driveStraight( RomiPose.theta );
-    } else if (in_cmd.indexOf("zero") > -1) { //# Go straight
+      driveStraight();
+    } else if (in_cmd.indexOf("zeroa") > -1) { //# Zero all and re-calibrate
       RomiPose.setPose( 0, 0, 0 );
-      Imu::getImu()->setZeroPos();
-    }    
+      Imu::getImu()->setZeroPos(true);
+      Serial.println("ZEROED ALL");
+    } else if (in_cmd.indexOf("zerop") > -1) { //# Zero all but DO NOT re-calibrate
+      RomiPose.setPose( 0, 0, 0 );
+      Imu::getImu()->setZeroPos(false);
+      Serial.println("ZEROED POS");
+    } else if (in_cmd.indexOf("printcal") > -1) { //# Print calibration params
+      Serial.print("MIN: ");
+      Serial.print(Imu::getImu()->getAxZero_min());
+      Serial.print(", MAX: ");
+      Serial.println(Imu::getImu()->getAxZero_max());
+    }
   }
 }
 
@@ -306,42 +315,52 @@ void changeState( int which_state ) {
    the theta_demand value and also drive fowards, in a
    straight line once romiPose.theta matches demand_theta.
 */
-void driveStraight( float theta_demand ) {
+//void driveStraight( float theta_demand ) {
+//
+//  // First, make sure the demand is reasonably
+//  // sensible.  Wrap value within 0:TWO_PI
+//  while ( theta_demand < 0 )      theta_demand += TWO_PI;
+//  while ( theta_demand > TWO_PI ) theta_demand -= TWO_PI;
+//
+//  // https://stackoverflow.com/questions/1878907/the-smallest-difference-between-2-angles
+//  // Some crazy atan2 magic.
+//  // Treats the difference in angle as cartesian x,y components.
+//  // Cos and Sin are effectively wrapping the values between -1, +1, with a 90 degree phase.
+//  // So we can pass in values larger/smaller than 0:TWO_PI fine.
+//  // atan2 returns -PI/+PI, giving us an indication of direction to turn.
+//  // Between -PI/+PI also means we avoid an extreme demand sent to the heading PID, e.g.
+//  // if we were to send PI*4...
+//
+//  // We want to keep the difference in the Romi theta
+//  // between time steps to 0.
+//  float diff = atan2( sin( ( theta_demand - RomiPose.theta) ), cos( (theta_demand - RomiPose.theta) ) );
+//
+//  // Demand 0, change in theta is measurement.
+//  float bearing = H_PID.update( 0, diff );
+//
+//  // Foward speed.
+//  float fwd_bias = (driving_direction ? 1 : -1) * STRAIGHT_FWD_SPEED;
+//
+//  // PID speed control.
+//  float l_pwr = L_PID.update( (fwd_bias - bearing), l_speed_t3 );
+//  float r_pwr = R_PID.update( (fwd_bias + bearing), r_speed_t3 );
+//
+//  Imu::getImu()->setMotorRunning(true);
+//
+//  // Write power to motors.
+//  L_Motor.setPower(l_pwr);
+//  R_Motor.setPower(r_pwr);
+//} // end of behaviour
 
-  // First, make sure the demand is reasonably
-  // sensible.  Wrap value within 0:TWO_PI
-  while ( theta_demand < 0 )      theta_demand += TWO_PI;
-  while ( theta_demand > TWO_PI ) theta_demand -= TWO_PI;
-
-  // https://stackoverflow.com/questions/1878907/the-smallest-difference-between-2-angles
-  // Some crazy atan2 magic.
-  // Treats the difference in angle as cartesian x,y components.
-  // Cos and Sin are effectively wrapping the values between -1, +1, with a 90 degree phase.
-  // So we can pass in values larger/smaller than 0:TWO_PI fine.
-  // atan2 returns -PI/+PI, giving us an indication of direction to turn.
-  // Between -PI/+PI also means we avoid an extreme demand sent to the heading PID, e.g.
-  // if we were to send PI*4...
-
-  // We want to keep the difference in the Romi theta
-  // between time steps to 0.
-  float diff = atan2( sin( ( theta_demand - RomiPose.theta) ), cos( (theta_demand - RomiPose.theta) ) );
-
-  // Demand 0, change in theta is measurement.
-  float bearing = H_PID.update( 0, diff );
-
-  // Foward speed.
+void driveStraight() {
   float fwd_bias = (driving_direction ? 1 : -1) * STRAIGHT_FWD_SPEED;
-
-  // PID speed control.
-  float l_pwr = L_PID.update( (fwd_bias - bearing), l_speed_t3 );
-  float r_pwr = R_PID.update( (fwd_bias + bearing), r_speed_t3 );
 
   Imu::getImu()->setMotorRunning(true);
 
   // Write power to motors.
-  L_Motor.setPower(l_pwr);
-  R_Motor.setPower(r_pwr);
-} // end of behaviour
+  L_Motor.setPower(fwd_bias);
+  R_Motor.setPower(fwd_bias);
+}
 
 /*
    This function attempts to minimise the difference between

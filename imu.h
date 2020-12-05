@@ -158,6 +158,8 @@ class Imu {
     */
     float getAxRaw();
 
+    float getAxRawCompensated();
+
     /**
        Returns Accelerometer's Y axis value raw.
     */
@@ -274,6 +276,11 @@ class Imu {
     void calibrateAllReadings();
 
     /**
+       Calibrate all axis and all gyroscope velocities.
+    */
+    void calibrateAllReadings1();
+
+    /**
        A method to tell IMU class when the motor starts running and when it ends.
     */
     void setMotorRunning(boolean motor_running);
@@ -309,7 +316,7 @@ class Imu {
     /**
      * Sets pose to (0, 0)
      */
-    void setZeroPos();
+    void setZeroPos(bool recalib);
 
     /**
      * Returns number of microsedonds after which a new value will be available. We want to
