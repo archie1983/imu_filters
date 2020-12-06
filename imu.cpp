@@ -659,7 +659,7 @@ float Imu::getFilteredAx() {
       enter eternal recursion. So pass false into those functions.
   */
   float gh_filtered_value = gh_filter->apply_filter(getAxRawCompensated());
-  float curAcceleration_X = ((gh_filtered_value * acc_sensitivity_conversion_factor) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+  float curAcceleration_X = (gh_filtered_value * acc_sensitivity_conversion_factor); //# converting to mg
 
   return curAcceleration_X;
 }
@@ -784,8 +784,8 @@ void Imu::calibrateAllReadings() {
 
 
   aXZero = 0; //# switch off the previous style calibration
-  //aXZero_min = -60; //# overriding with experimental value
-  //aXZero_max = 60; //# overriding with experimental value
+  aXZero_min = -17; //# overriding with experimental value
+  aXZero_max = 17; //# overriding with experimental value
 }
 
 void Imu::calibrateAllReadings1() {
