@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <LSM6.h>
 #include "pin_names_and_constants.h"
+#include "gh_filter.h"
 
 /**
    Class for IMU
@@ -301,6 +302,9 @@ class Imu {
     */
     float calcHeading();
 
+    /**
+     * Returns an Acc X axis reading filtered with some filter (for now- with G-H filter).
+     */
     float getFilteredAx();
 
     /**
@@ -334,6 +338,11 @@ class Imu {
        Reference to the singleton imu object.
     */
     static Imu* imu;
+
+    /**
+     * We'll be using this to filter acc values.
+     */
+    Gh_filter_c* gh_filter;
 
     /**
        Reference to the hardware.

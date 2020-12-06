@@ -44,6 +44,11 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   initialiseEmaValues();
 
   /**
+   * We'll be using this to filter acc values.
+   */
+  gh_filter = new Gh_filter_c(0.5, 0.1);
+
+  /**
      At the beginning we're going to be at point (0, 0).
   */
   posX = 0.;
@@ -254,7 +259,7 @@ float Imu::getAx(bool readHW) {
     if (readHW) {
       readSensorIfNeeded();
     }
-    return getAxRawCompensated()  * acc_sensitivity_conversion_factor;
+    return getAxRawCompensated() * acc_sensitivity_conversion_factor;
   } else {
     return 0.;
   }
@@ -617,7 +622,8 @@ void Imu::updatePosition(float time_diff) {
       WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
       enter eternal recursion. So pass false into those functions.
     */
-    curAx = getAx(false);
+    curAx = getFilteredAx();
+    //curAx = getAx(false);
     //curAcceleration_X = (((curAx + prevAx) / 2) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
     curAcceleration_X = (curAx / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
 
@@ -644,19 +650,16 @@ void Imu::updatePosition(float time_diff) {
   }
 }
 
+/**
+ * Returns an Acc X axis reading filtered with some filter (for now- with G-H filter).
+ */
 float Imu::getFilteredAx() {
   /**
       WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
       enter eternal recursion. So pass false into those functions.
   */
-  float curAcceleration_X = (getAxEmaFiltered(false) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
-
-  /**
-     Dropping noise
-  */
-  if (abs(curAcceleration_X) < 0.05) {
-    curAcceleration_X = 0;
-  }
+  float gh_filtered_value = gh_filter->apply_filter(getAxRawCompensated());
+  float curAcceleration_X = ((gh_filtered_value * acc_sensitivity_conversion_factor) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
 
   return curAcceleration_X;
 }

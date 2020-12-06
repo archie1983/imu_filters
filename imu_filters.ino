@@ -216,6 +216,8 @@ void loop()
     //Serial.print(Imu::getImu()->getAxEmaFiltered(false));
     Serial.print(Imu::getImu()->getAxRaw());
     Serial.print(", ");
+    Serial.print(Imu::getImu()->getFilteredAx());
+    Serial.print(", ");
     Serial.print(Imu::getImu()->getAxRawCompensated());
     Serial.print(", ");
     Serial.print(ghfilterPos);
