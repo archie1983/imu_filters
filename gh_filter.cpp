@@ -1,21 +1,34 @@
 #include "gh_filter.h"
 
-Gh_filter_c::Gh_filter_c(float g_in, float h_in) {
-
-  previous_time = micros();
-  current_time = 0;
+/**
+ * g_in is how much we trust the new position update (G parameter of the G-H filter)
+ * h_in is how much we trust the new velocity update (H parameter of the G-H filter)
+ * alpha_in is how we split measurement weight between sensors. Alpha is how much weight we give to the first parameter in apply_filter(float arg1, float arg2)
+ */
+Gh_filter_c::Gh_filter_c(float g_in, float h_in, float alpha_in) {
   // arbiteraly defined g, h & alpha correction gains
   // 0 < g < 1 && 0 < h <= 2 && (0 < 4 - 2g - h)
   g = g_in; //# how much we trust the new position update //# 0.5
   h = h_in; //# how much we trust the new velocity update //# 0.1
-  alpha = 0.2;  // spliting measurment weight equaly between sensors
+  alpha = alpha_in; //# how we split measurement weight between sensors. Alpha is how much weight we give to the first parameter in apply_filter(float arg1, float arg2)
 
+  // set initial value of state estimates
+  init_params();
+}
+
+/**
+ * Drops all working parameters to their initial values.
+ */
+void Gh_filter_c::init_params() {
   // set initial value of state estimates
   current_position = 0.;
   previous_position = 0.;
   velocity = 0.;
 
   residual = 0.;
+
+  previous_time = micros();
+  current_time = 0;
 }
 
 /**

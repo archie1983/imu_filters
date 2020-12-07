@@ -69,6 +69,8 @@ void Kinematics_c::setPose( float _x, float _y, float _theta ) {
   y     = _y;
   theta = _theta;
   common_distance = sqrt(_x * _x + _y * _y);
+  cur_acceleration = 0.;
+  cur_velocity = 0.;
   last_update_time = micros();
 }
 
@@ -139,8 +141,8 @@ void Kinematics_c::update( long e0, long e1 ) {
    */
   current_update_time = micros();
   float prev_velocity = cur_velocity;
-  cur_velocity = new_x / (((current_update_time - last_update_time) / US_IN_1_S) * 1000.0); //# converting to m/s
-  cur_acceleration = (cur_velocity - prev_velocity) / ((current_update_time - last_update_time) / US_IN_1_S);
+  cur_velocity = new_x / ((float(current_update_time - last_update_time) / US_IN_1_S) * 1000.0); //# converting to m/s
+  cur_acceleration = (cur_velocity - prev_velocity) / (float(current_update_time - last_update_time) / US_IN_1_S);
   last_update_time = current_update_time;
   
 } // End of update()

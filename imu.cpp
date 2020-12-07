@@ -46,7 +46,7 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   /**
    * We'll be using this to filter acc values.
    */
-  gh_filter = new Gh_filter_c(0.5, 0.1);
+  gh_filter = new Gh_filter_c(0.5, 0.1, 0.2);
 
   /**
      At the beginning we're going to be at point (0, 0).
@@ -622,19 +622,19 @@ void Imu::updatePosition(float time_diff) {
       WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
       enter eternal recursion. So pass false into those functions.
     */
-    curAx = getFilteredAx();
-    //curAx = getAx(false);
+    //curAx = getFilteredAx();
+    curAx = getAx(false);
     //curAcceleration_X = (((curAx + prevAx) / 2) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
     curAcceleration_X = (curAx / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
 
     prevAx = curAx;
 
-    /**
-       Dropping noise
-    */
-    if (abs(curAcceleration_X) < 0.05) {
-      curAcceleration_X = 0;
-    }
+//    /**
+//       Dropping noise
+//    */
+//    if (abs(curAcceleration_X) < 0.05) {
+//      curAcceleration_X = 0;
+//    }
 
     curSpeed_X = curSpeed_X + (time_diff / US_IN_1_S) * curAcceleration_X; //# converting acceleration to the speed change in m/s and adding to the speed
 //
@@ -910,6 +910,8 @@ void Imu::setZeroPos(bool recalib) {
 
   posX = 0.;
   posY = 0.;
+
+  gh_filter->init_params();
 
   /*
    * And re-calibrate it too if needed

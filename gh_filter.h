@@ -6,7 +6,7 @@ class Gh_filter_c {
 
   public:
 
-    Gh_filter_c(float g_in, float h_in);
+    Gh_filter_c(float g_in, float h_in, float alpha_in);
 
     /**
      * Receive both inputs- from IMU and from encoders, then condition them and apply
@@ -19,6 +19,11 @@ class Gh_filter_c {
      * just on that input.
      */
     float apply_filter(float new_measurement);
+
+    /**
+     * Drops all working parameters to their initial values.
+     */
+    void init_params();
 
   private:
 

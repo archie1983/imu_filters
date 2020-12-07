@@ -53,7 +53,16 @@ PID_c         L_PID( SPD_PGAIN, SPD_IGAIN, SPD_DGAIN );       // Speed control, 
 PID_c         R_PID( SPD_PGAIN, SPD_IGAIN, SPD_DGAIN );       // Speed control, right.
 PID_c         H_PID( H_PGAIN, H_IGAIN, H_DGAIN );             // Position control, angle.
 Kinematics_c  RomiPose;
-Gh_filter_c gh_filter(0.5, 0.1);
+
+/**
+ * Position filter G = 0.5; H = 0.1; Alpha = 0.2 in favour of second argument, which gets 0.8 weight when doing apply_filter(float arg1, float arg2).
+ */
+Gh_filter_c position_filter(0.5, 0.1, 0.2);
+
+/**
+ * Acceleration filter. G = 0.5; H = 0.1; Alpha = 0.2 in favour of second argument, which gets 0.8 weight when doing apply_filter(float arg1, float arg2).
+ */
+Gh_filter_c acc_filter(0.5, 0.1, 0.2);
 
 // Global variables.
 unsigned long update_ts;   // Used for timing/flow control for main loop()
@@ -88,6 +97,14 @@ unsigned long last_pose_print_time = 0;
 
 unsigned long time_now = 0;
 
+/**
+ * The value resulting from fusing the IMU acceleration and Kinematics calculated acceleration
+ * with a G-H filter.
+ */
+float fused_acc = 0.;
+float fused_speed = 0.; //# speed inferred from fused_acc.
+float fused_pos = 0.; //# position inferred from fused_speed.
+
 /*
    Note, this blocks the flow/timing of your code.  Use sparingly.
    Audio indicator to notify boot up sequence
@@ -107,6 +124,30 @@ void stop_motors(bool notifyIMU) {
   L_Motor.setPower( 0 );
   R_Motor.setPower( 0 );
   if (notifyIMU) Imu::getImu()->setMotorRunning(false);
+}
+
+/**
+ * Drops all speeds, accelerations and positions to 0.
+ * 
+ * recalibrate_acc: a flag of whether we want to re-calibrate IMU or not
+ */
+void zero_pose(bool recalibrate_acc) {
+  stop_fused_motion();
+  fused_pos = 0.;
+
+  // X = 0, Y = 0, Theta = 0
+  RomiPose.setPose( 0, 0, 0 );
+  Imu::getImu()->setZeroPos(recalibrate_acc);
+  position_filter.init_params();
+}
+
+/**
+ * Zeroes the fused speed and acceleration when the motion has stopped.
+ */
+void stop_fused_motion() {
+  fused_speed = 0.;
+  fused_acc = 0.;
+  acc_filter.init_params();
 }
 
 void setup()
@@ -139,7 +180,7 @@ void setup()
 
   // We set the robot to start kinematics
   // X = 0, Y = 0, Theta = 0
-  RomiPose.setPose( 0, 0, 0 );
+  zero_pose(false);
 
   // Set initial value for our system
   // time stamps.
@@ -174,9 +215,10 @@ void loop()
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
     Serial.println("STOP");
-  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 150) {
+  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 50) {
     changeState(STATE_IDLE);
     stop_motors(true);   // notify IMU
+    stop_fused_motion();
   }
 
   /**
@@ -187,31 +229,43 @@ void loop()
   /**
    * Here we update IMU pose, acceleration and velocity values when needed
    */
-  if (time_now - last_imu_read_time > update_time_for_imu) {
-    Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
+  if (time_now - last_imu_read_time > update_time_for_imu + US_IN_1_MS) {
+    Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU and do all acc, speed and distance calculations
+
+    /**
+     * Do the Kinematics update too and also the fused distance calculations.
+     */
+    RomiPose.update(e0_count, e1_count);
+    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(), RomiPose.getPoseXmm());
+
+    /**
+     * Now that we've updated both Kinematics and IMU, let's try to fuse their accelerations.
+     */
+    infer_position_from_fused_acc(time_now - last_imu_read_time);
+    
     last_imu_read_time = time_now;
   }
 
-  /**
-   * Here we update Kinematics pose, acceleration and velocity values when needed
-   */
-  if (time_now - last_filter_update_time > TIME_TO_UPDATE_FILTERED_POSE) {
-    RomiPose.update(e0_count, e1_count);
-    ghfilterPos = gh_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(), RomiPose.getPoseXmm());
-    last_filter_update_time = time_now;
-
-//  if (kinematics_or_imu_data) {
-//    ghfilterPos = gh_filter.apply_filter(RomiPose.getPoseXmm());
-//  } else {
-//    ghfilterPos = gh_filter.apply_filter(Imu::getImu()->getCurrentPosXmm());
-//  }
+//  /**
+//   * Here we update Kinematics pose, acceleration and velocity values when needed
+//   */
+//  if (time_now - last_filter_update_time > TIME_TO_UPDATE_FILTERED_POSE) {
+//    RomiPose.update(e0_count, e1_count);
+//    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(), RomiPose.getPoseXmm());
+//    last_filter_update_time = time_now;
 //
-//  kinematics_or_imu_data = !kinematics_or_imu_data;
-    
-  }
+////  if (kinematics_or_imu_data) {
+////    ghfilterPos = position_filter.apply_filter(RomiPose.getPoseXmm());
+////  } else {
+////    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm());
+////  }
+////
+////  kinematics_or_imu_data = !kinematics_or_imu_data;
+//    
+//  }
 
   if ((STATE != STATE_IDLE && time_now - last_pose_print_time > TIME_TO_PRINT_POSE) ||
-      time_now - last_pose_print_time > TIME_TO_PRINT_POSE * 1) {
+      time_now - last_pose_print_time > TIME_TO_PRINT_POSE * 10) {
 //    Serial.print(ghfilterPos);
 //    Serial.print(",");
 //    Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
@@ -228,13 +282,17 @@ void loop()
 //    Serial.print(", ");
     Serial.print(ghfilterPos);
     Serial.print(", ");
+    Serial.print(fused_pos * 1000);
+    Serial.print(", ");
     Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
     Serial.print(", ");
-    Serial.print(RomiPose.getPoseXmm());  //prints distance in m
+    Serial.print(RomiPose.getTravelledDistance_mm());  //prints distance in m
     Serial.print(", ");
     Serial.print(Imu::getImu()->getCurrentSpeedX(), 6);
     Serial.print(", ");
     Serial.print(RomiPose.getCurVelocity(), 6);
+    Serial.print(", ");
+    Serial.print(fused_acc);
     Serial.print(", ");
     Serial.print(Imu::getImu()->getCurrentAccelerationX(), 6);
     Serial.print(", ");
@@ -245,6 +303,17 @@ void loop()
     act_on_commands();
   }
   //delay(5);
+}
+
+/**
+ * Infers speed and position from the fused accelerations of Kinematics and IMU.
+ * 
+ * time_diff: the time in us that was spent with the acceleration values that we get from kinematics and IMU.
+ */
+void infer_position_from_fused_acc(long time_diff) {
+  fused_acc = acc_filter.apply_filter(Imu::getImu()->getCurrentAccelerationX(), RomiPose.getCurAcceleration());
+  fused_speed = fused_speed + (time_diff / US_IN_1_S) * fused_acc; //# converting acceleration to the speed change in m/s and adding to the speed
+  fused_pos += (time_diff / US_IN_1_S) * fused_speed; //# converting position to m
 }
 
 boolean driving_direction = true; //# TRUE for going forward and FALSE for going back.
@@ -267,12 +336,10 @@ void act_on_commands() {
       changeState(STATE_DRIVE_STRAIGHT);
       driveStraight();
     } else if (in_cmd.indexOf("zeroa") > -1) { //# Zero all and re-calibrate
-      RomiPose.setPose( 0, 0, 0 );
-      Imu::getImu()->setZeroPos(true);
+      zero_pose(true);
       Serial.println("ZEROED ALL");
     } else if (in_cmd.indexOf("zerop") > -1) { //# Zero all but DO NOT re-calibrate
-      RomiPose.setPose( 0, 0, 0 );
-      Imu::getImu()->setZeroPos(false);
+      zero_pose(false);
       Serial.println("ZEROED POS");
     } else if (in_cmd.indexOf("printcal") > -1) { //# Print calibration params
       Serial.print("MIN: ");

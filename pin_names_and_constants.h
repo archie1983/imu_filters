@@ -10,6 +10,7 @@
  * Amount of microseconds in a second.
  */
 #define US_IN_1_S 1000000.0
+#define US_IN_1_MS 1000.0
 #define CALIBRATION_ITERATIONS 1000
 
 /**
