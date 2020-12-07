@@ -13,6 +13,20 @@ class Kinematics_c {
     long last_e0;
     long last_e1;
 
+    /**
+     * Estimated acceleration and velocity. This is just forward acceleration and velocity, not for
+     * X and Y axis individually.
+     */
+    float cur_acceleration;
+    float cur_velocity;
+    float common_distance; //# a combination of X and Y pose values to produce just a common travel distance. Should be equivalent to sqrt(x * x + y * y)
+
+    /**
+     * Variables to keep track of time- when it was updated compared to last time so that we can figure out velocity and acceleration.
+     */
+    long last_update_time;
+    long current_update_time;
+
     /* 
      *  Function prototypes 
      */
@@ -21,6 +35,9 @@ class Kinematics_c {
     void setPose( float _x, float _y, float _theta );
     float getPoseX();
     float getPoseXmm();
+    float getTravelledDistance_mm();
+    float getCurAcceleration();
+    float getCurVelocity();
 
   private:
 
@@ -36,9 +53,7 @@ class Kinematics_c {
  * Constructor, zeros variables.
  */
 Kinematics_c::Kinematics_c() {
-  x = 0;
-  y = 0;
-  theta = 0;
+  setPose(0, 0, 0);
   last_theta = 0;
   last_e0 = 0;
   last_e1 = 0;
@@ -53,7 +68,8 @@ void Kinematics_c::setPose( float _x, float _y, float _theta ) {
   x     = _x;
   y     = _y;
   theta = _theta;
-  
+  common_distance = sqrt(_x * _x + _y * _y);
+  last_update_time = micros();
 }
 
 /*
@@ -115,7 +131,18 @@ void Kinematics_c::update( long e0, long e1 ) {
   // between x and y in the global reference frame.
   x = x + (new_x * cos( theta ) );
   y = y + (new_x * sin( theta ) );
-
+  
+  common_distance += new_x;
+  /**
+   * Now we'll calculate current velocity and acceleration based on
+   * what encoder count increases we've seen since last time.
+   */
+  current_update_time = micros();
+  float prev_velocity = cur_velocity;
+  cur_velocity = new_x / (((current_update_time - last_update_time) / US_IN_1_S) * 1000.0); //# converting to m/s
+  cur_acceleration = (cur_velocity - prev_velocity) / ((current_update_time - last_update_time) / US_IN_1_S);
+  last_update_time = current_update_time;
+  
 } // End of update()
 
 float Kinematics_c::getPoseX(){
@@ -126,5 +153,16 @@ float Kinematics_c::getPoseXmm(){
   return x;
 }
 
+float Kinematics_c::getTravelledDistance_mm(){
+  return common_distance;
+}
+
+float Kinematics_c::getCurAcceleration() {
+  return cur_acceleration;
+}
+
+float Kinematics_c::getCurVelocity() {
+  return cur_velocity;
+}
 
 #endif

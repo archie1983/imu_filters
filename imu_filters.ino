@@ -184,11 +184,17 @@ void loop()
    */
   time_now = micros();  
 
+  /**
+   * Here we update IMU pose, acceleration and velocity values when needed
+   */
   if (time_now - last_imu_read_time > update_time_for_imu) {
     Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU
     last_imu_read_time = time_now;
   }
 
+  /**
+   * Here we update Kinematics pose, acceleration and velocity values when needed
+   */
   if (time_now - last_filter_update_time > TIME_TO_UPDATE_FILTERED_POSE) {
     RomiPose.update(e0_count, e1_count);
     ghfilterPos = gh_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(), RomiPose.getPoseXmm());
@@ -226,9 +232,13 @@ void loop()
     Serial.print(", ");
     Serial.print(RomiPose.getPoseXmm());  //prints distance in m
     Serial.print(", ");
-    Serial.print(Imu::getImu()->getCurrentSpeedX());
-    Serial.print(", ");  
-    Serial.println(Imu::getImu()->getCurrentAccelerationX());
+    Serial.print(Imu::getImu()->getCurrentSpeedX(), 6);
+    Serial.print(", ");
+    Serial.print(RomiPose.getCurVelocity(), 6);
+    Serial.print(", ");
+    Serial.print(Imu::getImu()->getCurrentAccelerationX(), 6);
+    Serial.print(", ");
+    Serial.println(RomiPose.getCurAcceleration(), 6);
     
     last_pose_print_time = time_now;
 
