@@ -295,18 +295,36 @@ void act_on_commands() {
       Serial.println("START");
       driving_direction = true;
       changeState(STATE_DRIVE_STRAIGHT);
-      driveStraight();
+      driveStraight(true);
     } else if (in_cmd.indexOf("back") > -1) { //# Go straight
       Serial.println("START");
+      zero_pose(false);
       driving_direction = false;
       changeState(STATE_DRIVE_STRAIGHT);
-      driveStraight();
+      driveStraight(true);
     } else if (in_cmd.indexOf("zeroa") > -1) { //# Zero all and re-calibrate
       zero_pose(true);
       Serial.println("ZEROED ALL");
+      beep(2);
+      Serial.print("MIN: ");
+      Serial.print(Imu::getImu()->getAxZero_min());
+      Serial.print(", MAX: ");
+      Serial.println(Imu::getImu()->getAxZero_max());
     } else if (in_cmd.indexOf("zerop") > -1) { //# Zero all but DO NOT re-calibrate
       zero_pose(false);
       Serial.println("ZEROED POS");
+    } else if (in_cmd.indexOf("zerod") > -1) { //# Zero all and re-calibrate while driving. This is to understand noise level while the speed should be constant while driving.
+      driveStraight(false);
+      delay(1000); //# let it get up to speed
+      zero_pose(true); //# start calibration
+      stop_motors(false);
+      beep(2);
+      Serial.println("ZEROED ALL");
+      beep(2);
+      Serial.print("MIN: ");
+      Serial.print(Imu::getImu()->getAxZero_min());
+      Serial.print(", MAX: ");
+      Serial.println(Imu::getImu()->getAxZero_max());
     } else if (in_cmd.indexOf("printcal") > -1) { //# Print calibration params
       Serial.print("MIN: ");
       Serial.print(Imu::getImu()->getAxZero_min());
@@ -344,10 +362,12 @@ void changeState( int which_state ) {
   STATE = which_state;
 }
 
-void driveStraight() {
+void driveStraight(bool notify_imu) {
   float fwd_bias = (driving_direction ? 1 : -1) * STRAIGHT_FWD_SPEED;
 
-  Imu::getImu()->setMotorRunning(true);
+  if (notify_imu) {
+    Imu::getImu()->setMotorRunning(true);
+  }
 
   // Write power to motors.
   L_Motor.setPower(fwd_bias);

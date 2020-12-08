@@ -494,8 +494,8 @@ void Imu::calibrateAllReadings() {
 
 
   aXZero = 0; //# switch off the previous style calibration
-  aXZero_min = -17; //# overriding with experimental value
-  aXZero_max = 17; //# overriding with experimental value
+  aXZero_min = -315; //# overriding with experimental value
+  aXZero_max = 315; //# overriding with experimental value
 }
 
 /**
@@ -505,7 +505,7 @@ void Imu::initialiseIMU() {
   if (imu == NULL) {
     pinMode(YELLOW_LED, OUTPUT);
     //toggle_led();
-    imu = new Imu(Imu::AccFullScaleSelection::AFS_8,
+    imu = new Imu(Imu::AccFullScaleSelection::AFS_2,
                   Imu::AccAntiAliasFilter::AA_200,
                   Imu::AccSampleRate::ASR_416,
                   Imu::GyroFullScaleSelection::GFS_2000,
