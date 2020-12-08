@@ -144,17 +144,17 @@ void Kinematics_c::update( long e0, long e1 ) {
   cur_velocity = new_x / ((float(current_update_time - last_update_time) / US_IN_1_S) * 1000.0); //# converting to m/s
   cur_acceleration = (cur_velocity - prev_velocity) / (float(current_update_time - last_update_time) / US_IN_1_S);
 
-  Serial.print(new_x);
-  Serial.print(", ");
-  Serial.print(cur_velocity);
-  Serial.print(", ");
-  Serial.print(cur_acceleration);
-  Serial.print(", ");
-  Serial.print(delta_e0);
-  Serial.print(", ");
-  Serial.print(delta_e1);
-  Serial.print(", ");
-  Serial.println(current_update_time - last_update_time);
+//  Serial.print(new_x);
+//  Serial.print(", ");
+//  Serial.print(cur_velocity);
+//  Serial.print(", ");
+//  Serial.print(cur_acceleration);
+//  Serial.print(", ");
+//  Serial.print(delta_e0);
+//  Serial.print(", ");
+//  Serial.print(delta_e1);
+//  Serial.print(", ");
+//  Serial.println(current_update_time - last_update_time);
 
   last_update_time = current_update_time;
   

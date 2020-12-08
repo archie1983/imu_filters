@@ -260,12 +260,11 @@ void loop()
   if (time_now - last_filter_update_time > TIME_TO_ESTIMATE_ACC_FROM_ENCODERS) {
     RomiPose.update(e0_count, e1_count);
     ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(), RomiPose.getPoseXmm());
-    last_filter_update_time = time_now;
 
     /**
      * Now that we've updated both Kinematics and IMU, let's try to fuse their accelerations.
      */
-    infer_position_from_fused_acc(time_now - last_imu_read_time);
+    infer_position_from_fused_acc(time_now - last_filter_update_time);
 
 //  if (kinematics_or_imu_data) {
 //    ghfilterPos = position_filter.apply_filter(RomiPose.getPoseXmm());
@@ -274,7 +273,7 @@ void loop()
 //  }
 //
 //  kinematics_or_imu_data = !kinematics_or_imu_data;
-    
+    last_filter_update_time = time_now;
   }
 
   if ((STATE != STATE_IDLE && time_now - last_pose_print_time > TIME_TO_PRINT_POSE) ||
@@ -295,23 +294,23 @@ void loop()
 //    Serial.print(", ");
 
 
-//    Serial.print(ghfilterPos);
-//    Serial.print(", ");
-//    Serial.print(fused_pos * 1000);
-//    Serial.print(", ");
-//    Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
-//    Serial.print(", ");
-//    Serial.print(RomiPose.getTravelledDistance_mm());  //prints distance in m
-//    Serial.print(", ");
-//    Serial.print(Imu::getImu()->getCurrentSpeedX(), 6);
-//    Serial.print(", ");
-//    Serial.print(RomiPose.getCurVelocity(), 6);
-//    Serial.print(", ");
-//    Serial.print(fused_acc);
-//    Serial.print(", ");
-//    Serial.print(Imu::getImu()->getCurrentAccelerationX(), 6);
-//    Serial.print(", ");
-//    Serial.println(RomiPose.getCurAcceleration(), 6);
+    Serial.print(ghfilterPos);
+    Serial.print(", ");
+    Serial.print(fused_pos * 1000);
+    Serial.print(", ");
+    Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
+    Serial.print(", ");
+    Serial.print(RomiPose.getTravelledDistance_mm());  //prints distance in m
+    Serial.print(", ");
+    Serial.print(Imu::getImu()->getCurrentSpeedX(), 6);
+    Serial.print(", ");
+    Serial.print(RomiPose.getCurVelocity(), 6);
+    Serial.print(", ");
+    Serial.print(fused_acc);
+    Serial.print(", ");
+    Serial.print(filtered_imu_acc, 6);
+    Serial.print(", ");
+    Serial.println(RomiPose.getCurAcceleration(), 6);
 //filtered_imu_acc
     
     last_pose_print_time = time_now;
