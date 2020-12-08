@@ -32,6 +32,7 @@
 /**
  * Time constraints for IMU and others
  */
-#define TIME_TO_UPDATE_FILTERED_POSE 5000 //# We'll update our filter every this many microseconds
+#define TIME_TO_UPDATE_FILTERED_POSE 50000 //# We'll update our filter every this many microseconds
+#define TIME_TO_ESTIMATE_ACC_FROM_ENCODERS 50000 //# We'll estimate acceleration from encoders every this many microseconds
 #define TIME_TO_PRINT_POSE 100000 //# We'll print our poses every this many microseconds
 #endif
