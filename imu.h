@@ -100,59 +100,9 @@ class Imu {
     float getAx();
 
     /**
-       Returns Accelerometer's Y axis value converted to mg. This function guarantees that hardware will be read.
-    */
-    float getAy();
-
-    /**
-       Returns Accelerometer's Z axis value converted to mg. This function guarantees that hardware will be read.
-    */
-    float getAz();
-
-    /**
-       Returns Gyroscope's X axis value converted to mdps. This function guarantees that hardware will be read.
-    */
-    float getGx();
-
-    /**
-       Returns Gyroscope's Y axis value converted to mdps. This function guarantees that hardware will be read.
-    */
-    float getGy();
-
-    /**
-       Returns Gyroscope's Z axis value converted to mdps. This function guarantees that hardware will be read.
-    */
-    float getGz();
-
-    /**
        Returns Accelerometer's X axis value converted to mg with or without reading the hardware.
     */
     float getAx(bool readHW);
-
-    /**
-       Returns Accelerometer's Y axis value converted to mg with or without reading the hardware.
-    */
-    float getAy(bool readHW);
-
-    /**
-       Returns Accelerometer's Z axis value converted to mg with or without reading the hardware.
-    */
-    float getAz(bool readHW);
-
-    /**
-       Returns Gyroscope's X axis value converted to mdps with or without reading the hardware.
-    */
-    float getGx(bool readHW);
-
-    /**
-       Returns Gyroscope's Y axis value converted to mdps with or without reading the hardware.
-    */
-    float getGy(bool readHW);
-
-    /**
-       Returns Gyroscope's Z axis value converted to mdps with or without reading the hardware.
-    */
-    float getGz(bool readHW);
 
     /**
        Returns Accelerometer's X axis value raw.
@@ -162,59 +112,9 @@ class Imu {
     float getAxRawCompensated();
 
     /**
-       Returns Accelerometer's Y axis value raw.
-    */
-    float getAyRaw();
-
-    /**
-       Returns Accelerometer's Z axis value raw.
-    */
-    float getAzRaw();
-
-    /**
-       Returns Gyroscope's X axis value raw.
-    */
-    float getGxRaw();
-
-    /**
-       Returns Gyroscope's Y axis value raw.
-    */
-    float getGyRaw();
-
-    /**
-       Returns Gyroscope's Z axis value raw.
-    */
-    float getGzRaw();
-
-    /**
        Returns Accelerometer's X axis value EMA filtered. This function guarantees that hardware will be read.
     */
     float getAxEmaFiltered();
-
-    /**
-       Returns Accelerometer's Y axis value EMA filtered. This function guarantees that hardware will be read.
-    */
-    float getAyEmaFiltered();
-
-    /**
-       Returns Accelerometer's Z axis value EMA filtered. This function guarantees that hardware will be read.
-    */
-    float getAzEmaFiltered();
-
-    /**
-       Returns Gyroscope's X axis value EMA filtered. This function guarantees that hardware will be read.
-    */
-    float getGxEmaFiltered();
-
-    /**
-       Returns Gyroscope's Y axis value EMA filtered. This function guarantees that hardware will be read.
-    */
-    float getGyEmaFiltered();
-
-    /**
-       Returns Gyroscope's Z axis value EMA filtered. This function guarantees that hardware will be read.
-    */
-    float getGzEmaFiltered();
 
     /**
        Returns Accelerometer's X axis value EMA filtered with or without reading the hardware.
@@ -222,39 +122,9 @@ class Imu {
     float getAxEmaFiltered(bool readHW);
 
     /**
-       Returns Accelerometer's Y axis value EMA filtered with or without reading the hardware.
-    */
-    float getAyEmaFiltered(bool readHW);
-
-    /**
-       Returns Accelerometer's Z axis value EMA filtered with or without reading the hardware.
-    */
-    float getAzEmaFiltered(bool readHW);
-
-    /**
-       Returns Gyroscope's X axis value EMA filtered with or without reading the hardware.
-    */
-    float getGxEmaFiltered(bool readHW);
-
-    /**
-       Returns Gyroscope's Y axis value EMA filtered with or without reading the hardware.
-    */
-    float getGyEmaFiltered(bool readHW);
-
-    /**
-       Returns Gyroscope's Z axis value EMA filtered with or without reading the hardware.
-    */
-    float getGzEmaFiltered(bool readHW);
-
-    /**
        Variables required for applying EMA to the IMU outputs.
     */
     float prev_Ax_ema_val;
-    float prev_Ay_ema_val;
-    float prev_Az_ema_val;
-    float prev_Gx_ema_val;
-    float prev_Gy_ema_val;
-    float prev_Gz_ema_val;
 
     /**
        Static getter for this class
@@ -267,19 +137,9 @@ class Imu {
     static void initialiseIMU();
 
     /**
-       Take in a fresh reading for each initialised sensor.
-    */
-    void readAllAxis();
-
-    /**
        Calibrate all axis and all gyroscope velocities.
     */
     void calibrateAllReadings();
-
-    /**
-       Calibrate all axis and all gyroscope velocities.
-    */
-    void calibrateAllReadings1();
 
     /**
        A method to tell IMU class when the motor starts running and when it ends.
@@ -290,17 +150,9 @@ class Imu {
        Current immediate values for speed and acceleration
     */
     float getCurrentSpeedX();
-    float getCurrentSpeedY();
     float getCurrentAccelerationX();
-    float getCurrentAccelerationY();
     float getCurrentPosX();
     float getCurrentPosXmm();
-    float getCurrentPosY();
-
-    /**
-       Returns heading angle in degrees
-    */
-    float calcHeading();
 
     /**
      * Returns an Acc X axis reading filtered with some filter (for now- with G-H filter).
@@ -391,11 +243,6 @@ class Imu {
        Variables needed to store calibration value for axis and gyro speeds.
     */
     float aXZero;
-    float aYZero;
-    float aZZero;
-    float gXZero;
-    float gYZero;
-    float gZZero;
 
     /**
      * When calibrating X axis, we'll take the minimum value that we've seen while stationary and the maximum.
@@ -408,15 +255,12 @@ class Imu {
        Position of Romi according to what we can figure out from the accelerometer.
     */
     float posX;
-    float posY;
 
     /**
        Immediate acceleration and speed for X and Y axis.
     */
     float curAcceleration_X;
-    float curAcceleration_Y;
     float curSpeed_X;
-    float curSpeed_Y;
 
     /**
        We will want to accumulate position only when the motor is running. In reality we probably should
