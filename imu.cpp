@@ -44,20 +44,53 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   initialiseEmaValues();
 
   /**
-   * We'll be using this to filter acc values.
+   * G-H filter to filter IMU values. G = 0.5; H = 0.1; Alpha = 0.2 but will not be used here.
    */
-  gh_filter = new Gh_filter_c(0.5, 0.1, 0.2);
+  imu_acc_filter_gh = new Gh_filter_c(0.5, 0.1, 0.2);
 
   /**
-     At the beginning we're going to be at point (0, 0).
-  */
-  posX = 0.;
+   * Kalman filter to filter IMU values.
+   */
+  imu_acc_filter_Kalman = new TrivialKalmanFilter<float>(DT_COVARIANCE_RK, DT_COVARIANCE_QK);
 
   /**
-     And speed and acceleration is 0.
-  */
-  curAcceleration_X = 0.;
-  curSpeed_X = 0.;
+   * This is position as calculated using acc values with no filtering.
+   * At the beginning we're going to be at point 0.
+   */
+  posX_nf = 0.;
+
+  /**
+   * And speed and acceleration is 0.
+   * This is acceleration and speed as calculated using no filtering on acc values.
+   */
+  curAcceleration_X_nf = 0.;
+  curSpeed_X_nf = 0.;
+
+  /**
+   * This is position as calculated using G-H filtered acc values.
+   * At the beginning we're going to be at point 0.
+   */
+  posX_gh = 0.;
+
+  /**
+   * And speed and acceleration is 0.
+   * This is acceleration and speed as calculated using G-H filtered acc values.
+   */
+  curAcceleration_X_gh = 0.;
+  curSpeed_X_gh = 0.;
+
+  /**
+   * This is position as calculated using Kalman filtered acc values.
+   * At the beginning we're going to be at point 0.
+   */
+  posX_k = 0.;
+
+  /**
+   * And speed and acceleration is 0.
+   * This is acceleration and speed as calculated using Kalman filtered acc values.
+   */
+  curAcceleration_X_k = 0.;
+  curSpeed_X_k = 0.;
 
   /**
      And motor is not running.
@@ -322,6 +355,38 @@ float Imu::getAxEmaFiltered() {
 }
 
 /**
+   Returns Accelerometer's X axis value converted to mg with Kalman filtering applied on the raw value
+   before multiplying with the conversion factor.
+*/
+float Imu::getAxKalmanFiltered(bool readHW) {
+  if (imuHardware != NULL) {
+    if (readHW) {
+      readSensorIfNeeded();
+    }
+
+    return imu_acc_filter_Kalman->update(getAxRawCompensated()) * acc_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
+}
+
+/**
+   Returns Accelerometer's X axis value converted to mg with G-h filtering applied on the raw value
+   before multiplying with the conversion factor.
+*/
+float Imu::getAxGhFiltered(bool readHW) {
+  if (imuHardware != NULL) {
+    if (readHW) {
+      readSensorIfNeeded();
+    }
+
+    return imu_acc_filter_gh->apply_filter(getAxRawCompensated()) * acc_sensitivity_conversion_factor;
+  } else {
+    return 0.;
+  }
+}
+
+/**
    Reads the sensor via I2C bus if the time since last read has been long enough.
 */
 void Imu::readSensorIfNeeded() {
@@ -366,61 +431,84 @@ void Imu::updatePosition(float time_diff) {
       WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
       enter eternal recursion. So pass false into those functions.
     */
-    //curAx = getFilteredAx();
-    curAx = getAx(false);
+    //curAx = getAx(false);
     //curAcceleration_X = (((curAx + prevAx) / 2) / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
-    curAcceleration_X = (curAx / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+    //prevAx = curAx;
 
-    prevAx = curAx;
+    curAx = getAxKalmanFiltered(false);
+    curAcceleration_X_k = (curAx / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+    curSpeed_X_k = curSpeed_X_k + (time_diff / US_IN_1_S) * curAcceleration_X_k; //# converting acceleration to the speed change in m/s and adding to the speed
+    posX_k = posX_k + (time_diff / US_IN_1_S) * curSpeed_X_k; //# converting position to m
 
-//    /**
-//       Dropping noise
-//    */
-//    if (abs(curAcceleration_X) < 0.05) {
-//      curAcceleration_X = 0;
-//    }
+    curAx = getAxGhFiltered(false);
+    curAcceleration_X_gh = (curAx / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+    curSpeed_X_gh = curSpeed_X_gh + (time_diff / US_IN_1_S) * curAcceleration_X_gh; //# converting acceleration to the speed change in m/s and adding to the speed
+    posX_gh = posX_gh + (time_diff / US_IN_1_S) * curSpeed_X_gh; //# converting position to m
 
-    curSpeed_X = curSpeed_X + (time_diff / US_IN_1_S) * curAcceleration_X; //# converting acceleration to the speed change in m/s and adding to the speed
-//
-//    if (abs(curSpeed_X) < 0.01) {
-//      curSpeed_X = 0;
-//    }
-
-    posX = posX + (time_diff / US_IN_1_S) * curSpeed_X; //# converting position to m
+    curAx = getAx(false);
+    curAcceleration_X_nf = (curAx / 1000.0) * GRAVITY_CONSTANT; //# converting mg to m/s^2
+    curSpeed_X_nf = curSpeed_X_nf + (time_diff / US_IN_1_S) * curAcceleration_X_nf; //# converting acceleration to the speed change in m/s and adding to the speed
+    posX_nf = posX_nf + (time_diff / US_IN_1_S) * curSpeed_X_nf; //# converting position to m
   }
-}
-
-/**
- * Returns an Acc X axis reading filtered with some filter (for now- with G-H filter).
- */
-float Imu::getFilteredAx() {
-  /**
-      WARNING Doing getAx(true) or getAx(true) here or getAxEmaFiltered(true) is risky, because if we're slow enough, we could
-      enter eternal recursion. So pass false into those functions.
-  */
-  float gh_filtered_value = gh_filter->apply_filter(getAxRawCompensated());
-  float curAcceleration_X = (gh_filtered_value * acc_sensitivity_conversion_factor); //# converting to mg
-
-  return curAcceleration_X;
 }
 
 /**
    Current immediate values for speed and acceleration
 */
-float Imu::getCurrentSpeedX() {
-  return curSpeed_X;
+float Imu::getCurrentSpeedX(EstimateType et) {
+  switch (et) {
+    case NO_FILTERED:
+      return curSpeed_X_nf;
+      break;
+    case GH_FILTERED:
+      return curSpeed_X_gh;
+      break;
+    case KALMAN_FILTERED:
+      return curSpeed_X_k;
+      break;
+  }
 }
 
-float Imu::getCurrentAccelerationX() {
-  return curAcceleration_X;
+float Imu::getCurrentAccelerationX(EstimateType et) {
+  switch (et) {
+    case NO_FILTERED:
+      return curAcceleration_X_nf;
+      break;
+    case GH_FILTERED:
+      return curAcceleration_X_gh;
+      break;
+    case KALMAN_FILTERED:
+      return curAcceleration_X_k;
+      break;
+  }
 }
 
-float Imu::getCurrentPosX() {
-  return posX;
+float Imu::getCurrentPosX(EstimateType et) {
+  switch (et) {
+    case NO_FILTERED:
+      return posX_nf;
+      break;
+    case GH_FILTERED:
+      return posX_gh;
+      break;
+    case KALMAN_FILTERED:
+      return posX_k;
+      break;
+  }
 }
 
-float Imu::getCurrentPosXmm() {
-  return posX * 1000;
+float Imu::getCurrentPosXmm(EstimateType et) {
+  switch (et) {
+    case NO_FILTERED:
+      return posX_nf * 1000;
+      break;
+    case GH_FILTERED:
+      return posX_gh * 1000;
+      break;
+    case KALMAN_FILTERED:
+      return posX_k * 1000;
+      break;
+  }
 }
 
 void Imu::toggle_led() {
@@ -529,18 +617,31 @@ void Imu::setMotorRunning(boolean motor_running) {
      If we're stopping the motor, then nullify the speed and acceleration too.
   */
   if (!motor_running) {
-    curAcceleration_X = 0.;
-    curSpeed_X = 0.;
+    curAcceleration_X_nf = 0.;
+    curAcceleration_X_gh = 0.;
+    curAcceleration_X_k = 0.;
+    
+    curSpeed_X_nf = 0.;
+    curSpeed_X_gh = 0.;
+    curSpeed_X_k = 0.;
   }
 }
 
 void Imu::setZeroPos(bool recalib) {
-  curAcceleration_X = 0.;
-  curSpeed_X = 0.;
+  curAcceleration_X_nf = 0.;
+  curAcceleration_X_gh = 0.;
+  curAcceleration_X_k = 0.;
+  
+  curSpeed_X_nf = 0.;
+  curSpeed_X_gh = 0.;
+  curSpeed_X_k = 0.;
 
-  posX = 0.;
+  posX_nf = 0.;
+  posX_gh = 0.;
+  posX_k = 0.;
 
-  gh_filter->init_params();
+  imu_acc_filter_gh->init_params();
+  //imu_acc_filter_Kalman->reset();
 
   /*
    * And re-calibrate it too if needed

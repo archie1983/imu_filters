@@ -5,6 +5,10 @@
 #include <LSM6.h>
 #include "pin_names_and_constants.h"
 #include "gh_filter.h"
+#include <TrivialKalmanFilter.h>
+
+#define DT_COVARIANCE_RK 4.7e-3 // Estimation of the noise covariances (process) for Kalman filter
+#define DT_COVARIANCE_QK 1e-5   // Estimation of the noise covariances (observation) for Kalman filter
 
 /**
    Class for IMU
@@ -75,6 +79,15 @@ class Imu {
     };
 
     /**
+     * Estimate types for acceleration, speed and position.
+     */
+    enum EstimateType {
+      NO_FILTERED, //# With no filter applied to the acc
+      GH_FILTERED, //# With G-H filter applied to the acc
+      KALMAN_FILTERED //# With Kalman filter applied to the acc
+    };
+
+    /**
        Changes the configuration of the Accelerometer.
     */
     void reconfigureAcc(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr);
@@ -122,6 +135,18 @@ class Imu {
     float getAxEmaFiltered(bool readHW);
 
     /**
+       Returns Accelerometer's X axis value converted to mg with Kalman filtering applied on the raw value
+       before multiplying with the conversion factor.
+    */
+    float Imu::getAxKalmanFiltered(bool readHW);
+
+    /**
+       Returns Accelerometer's X axis value converted to mg with G-h filtering applied on the raw value
+       before multiplying with the conversion factor.
+    */
+    float Imu::getAxGhFiltered(bool readHW);
+
+    /**
        Variables required for applying EMA to the IMU outputs.
     */
     float prev_Ax_ema_val;
@@ -149,15 +174,10 @@ class Imu {
     /**
        Current immediate values for speed and acceleration
     */
-    float getCurrentSpeedX();
-    float getCurrentAccelerationX();
-    float getCurrentPosX();
-    float getCurrentPosXmm();
-
-    /**
-     * Returns an Acc X axis reading filtered with some filter (for now- with G-H filter).
-     */
-    float getFilteredAx();
+    float getCurrentSpeedX(EstimateType et);
+    float getCurrentAccelerationX(EstimateType et);
+    float getCurrentPosX(EstimateType et);
+    float getCurrentPosXmm(EstimateType et);
 
     /**
      * Returns the maximum calibration value seen.
@@ -194,7 +214,12 @@ class Imu {
     /**
      * We'll be using this to filter acc values.
      */
-    Gh_filter_c* gh_filter;
+    Gh_filter_c* imu_acc_filter_gh;
+
+    /**
+     * Kalman filter to filter IMU values.
+     */
+    TrivialKalmanFilter<float> * imu_acc_filter_Kalman;
 
     /**
        Reference to the hardware.
@@ -252,15 +277,25 @@ class Imu {
     float aXZero_max;
 
     /**
-       Position of Romi according to what we can figure out from the accelerometer.
-    */
-    float posX;
+     * Position of Romi according to what we can figure out from the accelerometer.
+     */
+    float posX_nf; //# From acc values with no filter
+    float posX_gh; //# From acc values filtered with G-H filter
+    float posX_k; //# From acc values filtered with Kalman filter
 
     /**
-       Immediate acceleration and speed for X and Y axis.
-    */
-    float curAcceleration_X;
-    float curSpeed_X;
+     * Immediate acceleration and speed for X and Y axis.
+     */
+    float curAcceleration_X_nf; //# From acc values with no filter
+    float curAcceleration_X_gh; //# From acc values filtered with G-H filter
+    float curAcceleration_X_k; //# From acc values filtered with Kalman filter
+
+    /**
+     * Speed estimates
+     */
+    float curSpeed_X_nf; //# From acc values with no filter
+    float curSpeed_X_gh; //# From acc values filtered with G-H filter
+    float curSpeed_X_k; //# From acc values filtered with Kalman filter
 
     /**
        We will want to accumulate position only when the motor is running. In reality we probably should

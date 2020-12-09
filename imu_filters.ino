@@ -4,6 +4,7 @@
 #include "motor.h"
 #include "timer3.h"
 #include "gh_filter.h"
+#include <TrivialKalmanFilter.h>
 
 #include <USBCore.h>    // To fix serial print behaviour bug.
 u8 USB_SendSpace(u8 ep);
@@ -38,6 +39,14 @@ Gh_filter_c acc_filter(0.5, 0.1, 0.2);
  */
 Gh_filter_c imu_acc_filter(0.5, 0.1, 0.2);
 
+/**
+ * Kalman filter to filter IMU values.
+ */
+#define DT_COVARIANCE_RK 4.7e-3 // Estimation of the noise covariances (process)
+#define DT_COVARIANCE_QK 1e-5   // Estimation of the noise covariances (observation)
+
+TrivialKalmanFilter<float> imu_acc_filter_k(DT_COVARIANCE_RK, DT_COVARIANCE_QK);
+
 // Global variables.
 unsigned long update_ts;   // Used for timing/flow control for main loop()
 unsigned long behaviour_ts;// Use to track how long a behaviour has run.
@@ -69,7 +78,8 @@ float fused_acc = 0.;
 float fused_speed = 0.; //# speed inferred from fused_acc.
 float fused_pos = 0.; //# position inferred from fused_speed.
 
-float filtered_imu_acc = 0.;
+float filtered_imu_acc = 0.; //# IMU acc filtered with G-H filter.
+float filtered_imu_acc_k = 0.; //# IMU acc filtered with Kalman filter
 
 /*
    Note, this blocks the flow/timing of your code.  Use sparingly.
@@ -114,6 +124,9 @@ void stop_fused_motion() {
   fused_speed = 0.;
   fused_acc = 0.;
   acc_filter.init_params();
+  imu_acc_filter.init_params();
+  position_filter.init_params();
+  imu_acc_filter_k.reset();
 }
 
 void setup()
@@ -190,7 +203,9 @@ void loop()
   if (time_now - last_imu_read_time > update_time_for_imu + US_IN_1_MS) {
     Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU and do all acc, speed and distance calculations
 
-    filtered_imu_acc = imu_acc_filter.apply_filter(Imu::getImu()->getCurrentAccelerationX());
+    float cur_ax = Imu::getImu()->getCurrentAccelerationX(Imu::EstimateType::KALMAN_FILTERED);
+    filtered_imu_acc = imu_acc_filter.apply_filter(cur_ax);
+    filtered_imu_acc_k = imu_acc_filter_k.update(cur_ax);
 //    /**
 //     * Do the Kinematics update too and also the fused distance calculations.
 //     */
@@ -210,7 +225,7 @@ void loop()
    */
   if (time_now - last_filter_update_time > TIME_TO_ESTIMATE_ACC_FROM_ENCODERS) {
     RomiPose.update(e0_count, e1_count);
-    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(), RomiPose.getPoseXmm());
+    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::NO_FILTERED), RomiPose.getPoseXmm());
 
     /**
      * Now that we've updated both Kinematics and IMU, let's try to fuse their accelerations.
@@ -249,19 +264,25 @@ void loop()
     Serial.print(", ");
     Serial.print(fused_pos * 1000);
     Serial.print(", ");
-    Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
+    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::NO_FILTERED));  //prints distance in m
     Serial.print(", ");
-    Serial.print(RomiPose.getTravelledDistance_mm());  //prints distance in m
+    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::GH_FILTERED));  //prints distance in m
     Serial.print(", ");
-    Serial.print(Imu::getImu()->getCurrentSpeedX(), 6);
+    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::KALMAN_FILTERED));  //prints distance in m
     Serial.print(", ");
-    Serial.print(RomiPose.getCurVelocity(), 6);
-    Serial.print(", ");
-    Serial.print(fused_acc);
-    Serial.print(", ");
-    Serial.print(filtered_imu_acc, 6);
-    Serial.print(", ");
-    Serial.println(RomiPose.getCurAcceleration(), 6);
+    Serial.println(RomiPose.getTravelledDistance_mm());  //prints distance in m
+//    Serial.print(", ");
+//    Serial.print(Imu::getImu()->getCurrentSpeedX(), 6);
+//    Serial.print(", ");
+//    Serial.print(RomiPose.getCurVelocity(), 6);
+//    Serial.print(", ");
+//    Serial.print(fused_acc);
+//    Serial.print(", ");
+//    Serial.print(filtered_imu_acc, 6);
+//    Serial.print(", ");
+//    Serial.print(filtered_imu_acc_k, 6);
+//    Serial.print(", ");
+//    Serial.println(RomiPose.getCurAcceleration(), 6);
 //filtered_imu_acc
     
     last_pose_print_time = time_now;
