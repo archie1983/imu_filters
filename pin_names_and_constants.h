@@ -11,7 +11,7 @@
  */
 #define US_IN_1_S 1000000.0
 #define US_IN_1_MS 1000.0
-#define CALIBRATION_ITERATIONS 1 //# 700
+#define CALIBRATION_ITERATIONS 1000 //# 700
 
 /**
  * Alpha factors for EMA filtering acceleromter and gyroscope values.

@@ -44,51 +44,51 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
   initialiseEmaValues();
 
   /**
-   * G-H filter to filter IMU values. G = 0.5; H = 0.1; Alpha = 0.2 but will not be used here.
-   */
+     G-H filter to filter IMU values. G = 0.5; H = 0.1; Alpha = 0.2 but will not be used here.
+  */
   imu_acc_filter_gh = new Gh_filter_c(0.5, 0.1, 0.2);
 
   /**
-   * Kalman filter to filter IMU values.
-   */
+     Kalman filter to filter IMU values.
+  */
   imu_acc_filter_Kalman = new TrivialKalmanFilter<float>(DT_COVARIANCE_RK, DT_COVARIANCE_QK);
 
   /**
-   * This is position as calculated using acc values with no filtering.
-   * At the beginning we're going to be at point 0.
-   */
+     This is position as calculated using acc values with no filtering.
+     At the beginning we're going to be at point 0.
+  */
   posX_nf = 0.;
 
   /**
-   * And speed and acceleration is 0.
-   * This is acceleration and speed as calculated using no filtering on acc values.
-   */
+     And speed and acceleration is 0.
+     This is acceleration and speed as calculated using no filtering on acc values.
+  */
   curAcceleration_X_nf = 0.;
   curSpeed_X_nf = 0.;
 
   /**
-   * This is position as calculated using G-H filtered acc values.
-   * At the beginning we're going to be at point 0.
-   */
+     This is position as calculated using G-H filtered acc values.
+     At the beginning we're going to be at point 0.
+  */
   posX_gh = 0.;
 
   /**
-   * And speed and acceleration is 0.
-   * This is acceleration and speed as calculated using G-H filtered acc values.
-   */
+     And speed and acceleration is 0.
+     This is acceleration and speed as calculated using G-H filtered acc values.
+  */
   curAcceleration_X_gh = 0.;
   curSpeed_X_gh = 0.;
 
   /**
-   * This is position as calculated using Kalman filtered acc values.
-   * At the beginning we're going to be at point 0.
-   */
+     This is position as calculated using Kalman filtered acc values.
+     At the beginning we're going to be at point 0.
+  */
   posX_k = 0.;
 
   /**
-   * And speed and acceleration is 0.
-   * This is acceleration and speed as calculated using Kalman filtered acc values.
-   */
+     And speed and acceleration is 0.
+     This is acceleration and speed as calculated using Kalman filtered acc values.
+  */
   curAcceleration_X_k = 0.;
   curSpeed_X_k = 0.;
 
@@ -102,20 +102,20 @@ Imu::Imu(AccFullScaleSelection afss, AccAntiAliasFilter aaaf, AccSampleRate asr,
 }
 
 /**
- * Set the EMA values to the current readings so that if we're starting EMA values again,
- * we're not influenced by previous run.
- */
+   Set the EMA values to the current readings so that if we're starting EMA values again,
+   we're not influenced by previous run.
+*/
 void Imu::initialiseEmaValues() {
   /**
      Initialising EMA values with current readings for IMU sensor outputs.
 
-     We want raw values for accelerometer outputs because accelerometer converstion 
+     We want raw values for accelerometer outputs because accelerometer converstion
      factors are all between 0 and 1.
 
      We're trying to apply EMA on the greatest value- whether that's raw or
      converted. That should give better effect of EMA.
   */
-//  prev_Ax_ema_val = getAxRaw() - aXZero;
+  //  prev_Ax_ema_val = getAxRaw() - aXZero;
   prev_Ax_ema_val = aXZero;
 }
 
@@ -303,7 +303,7 @@ float Imu::getAxRaw() {
 */
 float Imu::getAxRawCompensated() {
   float ax = imuHardware->a.x;
-//  return ax;
+  //  return ax;
   if (ax > aXZero_max) {
     return ax - aXZero_max - aXZero;
   } else if (ax < aXZero_min) {
@@ -314,15 +314,15 @@ float Imu::getAxRawCompensated() {
 }
 
 /**
- * Returns the maximum calibration value seen.
- */
+   Returns the maximum calibration value seen.
+*/
 float Imu::getAxZero_max() {
   return aXZero_max;
 }
 
 /**
- * Returns the minimum calibration value seen.
- */
+   Returns the minimum calibration value seen.
+*/
 float Imu::getAxZero_min() {
   return aXZero_min;
 }
@@ -396,15 +396,15 @@ void Imu::readSensorIfNeeded() {
   long time_now = micros();
   long time_diff = time_now - time_since_last_read;
   if (imuHardware != NULL && (time_diff > acc_refresh_time_us || time_diff > gyro_refresh_time_us)) {
-//    toggle_led();
-//    long now_t = micros();
-//    Serial.print("B: ");
-//    Serial.print(now_t);
+    //    toggle_led();
+    //    long now_t = micros();
+    //    Serial.print("B: ");
+    //    Serial.print(now_t);
     imuHardware->readAcc();
-//    Serial.print(" A: ");
-//    Serial.print(micros() - now_t);
-//    Serial.print(" # ");
-//    Serial.println(imuHardware->a.x);
+    //    Serial.print(" A: ");
+    //    Serial.print(micros() - now_t);
+    //    Serial.print(" # ");
+    //    Serial.println(imuHardware->a.x);
 
     /**
        If we're reading in a new batch of values, then we may want to update our pose based on that
@@ -416,9 +416,9 @@ void Imu::readSensorIfNeeded() {
 }
 
 /**
- * Returns number of microsedonds after which a new value will be available. We want to
- * update IMU position after this many us have elapsed.
- */
+   Returns number of microsedonds after which a new value will be available. We want to
+   update IMU position after this many us have elapsed.
+*/
 unsigned int Imu::getAccRefreshTime() {
   return acc_refresh_time_us;
 }
@@ -526,64 +526,71 @@ void Imu::calibrateAllReadings() {
 
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
-    imuHardware->readAcc();
-    
-    /**
-     * getting minimum value seen during calibration
-     */
-    if (aXZero_min > imuHardware->a.x) {
-      aXZero_min = imuHardware->a.x;
-    }
+    totalAx += imuHardware->a.x;
 
-    /**
-     * getting max value seen during calibration
-     */
-    if (aXZero_max < imuHardware->a.x) {
-      aXZero_max = imuHardware->a.x;
-    }
-    
+    imuHardware->readAcc();
+
+    //    /**
+    //       getting minimum value seen during calibration
+    //    */
+    //    if (aXZero_min > imuHardware->a.x) {
+    //      aXZero_min = imuHardware->a.x;
+    //    }
+    //
+    //    /**
+    //       getting max value seen during calibration
+    //    */
+    //    if (aXZero_max < imuHardware->a.x) {
+    //      aXZero_max = imuHardware->a.x;
+    //    }
+
     delay((max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0) + 2);
   }
 
-  /**
-   * Finding the middle value between the highest and lowest seen
-   */
-  aXZero = (aXZero_max + aXZero_min) / 2;
+
 
   /**
-   * Now find the mean value for all readings above axZero and below axZero.
-   */
-  aXZero_max = 0.;
-  aXZero_min = 0.;
+     Finding the middle value between the highest and lowest seen
+  */
+  aXZero = totalAx / CALIBRATION_ITERATIONS;
+
+  /**
+     Now find the mean value for all readings above axZero and below axZero.
+  */
+  aXZero_max = aXZero;
+  aXZero_min = aXZero;
   for (int i = 0; i < CALIBRATION_ITERATIONS; i++)
   {
     imuHardware->readAcc();
-    totalAx += imuHardware->a.x;
-    
+
     /**
-     * getting minimum value seen during calibration
-     */
-    if (imuHardware->a.x > aXZero) {
-      aXZero_max += imuHardware->a.x;
+       getting minimum value seen during calibration
+    */
+    if (imuHardware->a.x > aXZero_max) {
+      aXZero_max = imuHardware->a.x;
     }
 
     /**
-     * getting max value seen during calibration
-     */
-    if (imuHardware->a.x < aXZero) {
-      aXZero_min += imuHardware->a.x;
+       getting max value seen during calibration
+    */
+    if (imuHardware->a.x < aXZero_min) {
+      aXZero_min = imuHardware->a.x;
     }
-    
+
     delay((max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0) + 2);
   }
+
+
+
+  aXZero_max = aXZero_max;
+  aXZero_min = aXZero_min;
+
+  Serial.println(aXZero_min);
+  Serial.println(aXZero_max);
   
-  aXZero_max = aXZero_max / CALIBRATION_ITERATIONS;
-  aXZero_min = aXZero_min / CALIBRATION_ITERATIONS;
-
-
   aXZero = 0; //# switch off the previous style calibration
-  aXZero_min = -315; //# overriding with experimental value
-  aXZero_max = 315; //# overriding with experimental value
+  //  aXZero_min = 210; //# overriding with experimental value
+  //  aXZero_max = 500; //# overriding with experimental value
 }
 
 /**
@@ -608,8 +615,8 @@ void Imu::setMotorRunning(boolean motor_running) {
   motor_is_running = motor_running;
 
   /**
-   * We don't want previous EMA values now.
-   */
+     We don't want previous EMA values now.
+  */
   initialiseEmaValues();
   time_since_last_read = micros() - max(gyro_refresh_time_us, acc_refresh_time_us);
 
@@ -620,7 +627,7 @@ void Imu::setMotorRunning(boolean motor_running) {
     curAcceleration_X_nf = 0.;
     curAcceleration_X_gh = 0.;
     curAcceleration_X_k = 0.;
-    
+
     curSpeed_X_nf = 0.;
     curSpeed_X_gh = 0.;
     curSpeed_X_k = 0.;
@@ -631,7 +638,7 @@ void Imu::setZeroPos(bool recalib) {
   curAcceleration_X_nf = 0.;
   curAcceleration_X_gh = 0.;
   curAcceleration_X_k = 0.;
-  
+
   curSpeed_X_nf = 0.;
   curSpeed_X_gh = 0.;
   curSpeed_X_k = 0.;
@@ -644,8 +651,8 @@ void Imu::setZeroPos(bool recalib) {
   //imu_acc_filter_Kalman->reset();
 
   /*
-   * And re-calibrate it too if needed
-   */
+     And re-calibrate it too if needed
+  */
   if (recalib) {
     calibrateAllReadings();
   }

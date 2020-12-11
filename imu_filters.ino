@@ -25,23 +25,23 @@ Motor_c       R_Motor( M1_PWM, M1_DIR);                       // To set right mo
 Kinematics_c  RomiPose;
 
 /**
- * Position filter G = 0.5; H = 0.1; Alpha = 0.2 in favour of second argument, which gets 0.8 weight when doing apply_filter(float arg1, float arg2).
- */
+   Position filter G = 0.5; H = 0.1; Alpha = 0.2 in favour of second argument, which gets 0.8 weight when doing apply_filter(float arg1, float arg2).
+*/
 Gh_filter_c position_filter(0.5, 0.1, 0.2);
 
 /**
- * Fused Acceleration filter. G = 0.5; H = 0.1; Alpha = 0.2 in favour of second argument, which gets 0.8 weight when doing apply_filter(float arg1, float arg2).
- */
+   Fused Acceleration filter. G = 0.5; H = 0.1; Alpha = 0.2 in favour of second argument, which gets 0.8 weight when doing apply_filter(float arg1, float arg2).
+*/
 Gh_filter_c acc_filter(0.5, 0.1, 0.2);
 
 /**
- * IMU Acceleration filter. G = 0.5; H = 0.1; Alpha = 0.2 but will not be used here.
- */
+   IMU Acceleration filter. G = 0.5; H = 0.1; Alpha = 0.2 but will not be used here.
+*/
 Gh_filter_c imu_acc_filter(0.5, 0.1, 0.2);
 
 /**
- * Kalman filter to filter IMU values.
- */
+   Kalman filter to filter IMU values.
+*/
 #define DT_COVARIANCE_RK 4.7e-3 // Estimation of the noise covariances (process)
 #define DT_COVARIANCE_QK 1e-5   // Estimation of the noise covariances (observation)
 
@@ -60,8 +60,8 @@ int STATE = STATE_IDLE;  // System starts by being idle.
 float ghfilterPos = 0;
 
 /**
- * Variables to ensure timed execution of various processes
- */
+   Variables to ensure timed execution of various processes
+*/
 unsigned long last_imu_read_time = 0;
 unsigned long update_time_for_imu = 0;
 
@@ -71,9 +71,9 @@ unsigned long last_pose_print_time = 0;
 unsigned long time_now = 0;
 
 /**
- * The value resulting from fusing the IMU acceleration and Kinematics calculated acceleration
- * with a G-H filter.
- */
+   The value resulting from fusing the IMU acceleration and Kinematics calculated acceleration
+   with a G-H filter.
+*/
 float fused_acc = 0.;
 float fused_speed = 0.; //# speed inferred from fused_acc.
 float fused_pos = 0.; //# position inferred from fused_speed.
@@ -103,10 +103,10 @@ void stop_motors(bool notifyIMU) {
 }
 
 /**
- * Drops all speeds, accelerations and positions to 0.
- * 
- * recalibrate_acc: a flag of whether we want to re-calibrate IMU or not
- */
+   Drops all speeds, accelerations and positions to 0.
+
+   recalibrate_acc: a flag of whether we want to re-calibrate IMU or not
+*/
 void zero_pose(bool recalibrate_acc) {
   stop_fused_motion();
   fused_pos = 0.;
@@ -118,8 +118,8 @@ void zero_pose(bool recalibrate_acc) {
 }
 
 /**
- * Zeroes the fused speed and acceleration when the motion has stopped.
- */
+   Zeroes the fused speed and acceleration when the motion has stopped.
+*/
 void stop_fused_motion() {
   fused_speed = 0.;
   fused_acc = 0.;
@@ -132,15 +132,15 @@ void stop_fused_motion() {
 void setup()
 {
   Serial.begin(9600);
+  
+  // Print a debug, so we can see a reset on monitor.
+  if ( SERIAL_ACTIVE ) Serial.println("***RESET***");
 
   // Wait for serial to connect
   //delay(1500);
   Imu::initialiseIMU(); //# initialisation time of IMU should be enough wait time for serial to connect.
 
   beep(3);
-
-  // Print a debug, so we can see a reset on monitor.
-  if ( SERIAL_ACTIVE ) Serial.println("***RESET***");
 
   // Make sure motors are off so the robot
   // stays still.
@@ -172,9 +172,9 @@ void setup()
 }
 
 /**
- * We'll be switching which data we feed to the sensor fusion algorithm. On one cycle we'll
- * be feeding in IMU data and on next it should be Kinematics pose data.
- */
+   We'll be switching which data we feed to the sensor fusion algorithm. On one cycle we'll
+   be feeding in IMU data and on next it should be Kinematics pose data.
+*/
 bool kinematics_or_imu_data = false;
 
 void loop()
@@ -193,98 +193,98 @@ void loop()
   }
 
   /**
-   * Below this line we'll be branching based on time constraints
-   */
-  time_now = micros();  
+     Below this line we'll be branching based on time constraints
+  */
+  time_now = micros();
 
   /**
-   * Here we update IMU pose, acceleration and velocity values when needed
-   */
+     Here we update IMU pose, acceleration and velocity values when needed
+  */
   if (time_now - last_imu_read_time > update_time_for_imu + US_IN_1_MS) {
     Imu::getImu()->getAx(); //getAx is called to request acceleration from IMU and do all acc, speed and distance calculations
 
     float cur_ax = Imu::getImu()->getCurrentAccelerationX(Imu::EstimateType::KALMAN_FILTERED);
     filtered_imu_acc = imu_acc_filter.apply_filter(cur_ax);
     filtered_imu_acc_k = imu_acc_filter_k.update(cur_ax);
-//    /**
-//     * Do the Kinematics update too and also the fused distance calculations.
-//     */
-//    RomiPose.update(e0_count, e1_count);
-//    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(), RomiPose.getPoseXmm());
-//
-//    /**
-//     * Now that we've updated both Kinematics and IMU, let's try to fuse their accelerations.
-//     */
-//    infer_position_from_fused_acc(time_now - last_imu_read_time);
-    
+    //    /**
+    //     * Do the Kinematics update too and also the fused distance calculations.
+    //     */
+    //    RomiPose.update(e0_count, e1_count);
+    //    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(), RomiPose.getPoseXmm());
+    //
+    //    /**
+    //     * Now that we've updated both Kinematics and IMU, let's try to fuse their accelerations.
+    //     */
+    //    infer_position_from_fused_acc(time_now - last_imu_read_time);
+
     last_imu_read_time = time_now;
   }
 
   /**
-   * Here we update Kinematics pose, acceleration and velocity values when needed
-   */
+     Here we update Kinematics pose, acceleration and velocity values when needed
+  */
   if (time_now - last_filter_update_time > TIME_TO_ESTIMATE_ACC_FROM_ENCODERS) {
     RomiPose.update(e0_count, e1_count);
     ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::NO_FILTERED), RomiPose.getPoseXmm());
 
     /**
-     * Now that we've updated both Kinematics and IMU, let's try to fuse their accelerations.
-     */
+       Now that we've updated both Kinematics and IMU, let's try to fuse their accelerations.
+    */
     infer_position_from_fused_acc(time_now - last_filter_update_time);
 
-//  if (kinematics_or_imu_data) {
-//    ghfilterPos = position_filter.apply_filter(RomiPose.getPoseXmm());
-//  } else {
-//    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm());
-//  }
-//
-//  kinematics_or_imu_data = !kinematics_or_imu_data;
+    //  if (kinematics_or_imu_data) {
+    //    ghfilterPos = position_filter.apply_filter(RomiPose.getPoseXmm());
+    //  } else {
+    //    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm());
+    //  }
+    //
+    //  kinematics_or_imu_data = !kinematics_or_imu_data;
     last_filter_update_time = time_now;
   }
 
   if ((STATE != STATE_IDLE && time_now - last_pose_print_time > TIME_TO_PRINT_POSE) ||
       time_now - last_pose_print_time > TIME_TO_PRINT_POSE * 10) {
-//    Serial.print(ghfilterPos);
-//    Serial.print(",");
-//    Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
-//    Serial.print(", ");
-//    Serial.println(RomiPose.getPoseXmm());  //prints distance in m
+    //    Serial.print(ghfilterPos);
+    //    Serial.print(",");
+    //    Serial.print(Imu::getImu()->getCurrentPosXmm());  //prints distance in m
+    //    Serial.print(", ");
+    //    Serial.println(RomiPose.getPoseXmm());  //prints distance in m
 
-//  Serial.print(", ");
+    //  Serial.print(", ");
     //Serial.print(Imu::getImu()->getAxEmaFiltered(false));
-//    Serial.print(Imu::getImu()->getAxRaw());
-//    Serial.print(", ");
-//    Serial.print(Imu::getImu()->getFilteredAx());
-//    Serial.print(", ");
-//    Serial.print(Imu::getImu()->getAxRawCompensated());
-//    Serial.print(", ");
+    //    Serial.print(Imu::getImu()->getAxRaw());
+    //    Serial.print(", ");
+    //    Serial.print(Imu::getImu()->getFilteredAx());
+    //    Serial.print(", ");
+    //    Serial.print(Imu::getImu()->getAxRawCompensated());
+    //    Serial.print(", ");
 
 
-    Serial.print(ghfilterPos);
+    Serial.print(ghfilterPos);  // G-H filter of possition reported by acc and encoder
     Serial.print(", ");
-    Serial.print(fused_pos * 1000);
+    Serial.print(fused_pos * 1000);   // G-H filter of acceleration reported by acc and encoder and then cal position
     Serial.print(", ");
-    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::NO_FILTERED));  //prints distance in m
+    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::NO_FILTERED));  // RAW IMU reported positions with no filter
     Serial.print(", ");
-    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::GH_FILTERED));  //prints distance in m
+    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::GH_FILTERED));  // G-H filter only on acc and then calc position
     Serial.print(", ");
-    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::KALMAN_FILTERED));  //prints distance in m
+    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::KALMAN_FILTERED));  // Kalman fiilter only on acc and then calc position
     Serial.print(", ");
-    Serial.println(RomiPose.getTravelledDistance_mm());  //prints distance in m
-//    Serial.print(", ");
-//    Serial.print(Imu::getImu()->getCurrentSpeedX(), 6);
-//    Serial.print(", ");
-//    Serial.print(RomiPose.getCurVelocity(), 6);
-//    Serial.print(", ");
-//    Serial.print(fused_acc);
-//    Serial.print(", ");
-//    Serial.print(filtered_imu_acc, 6);
-//    Serial.print(", ");
-//    Serial.print(filtered_imu_acc_k, 6);
-//    Serial.print(", ");
-//    Serial.println(RomiPose.getCurAcceleration(), 6);
-//filtered_imu_acc
-    
+    Serial.println(RomiPose.getTravelledDistance_mm());  // Encoder count reported distance
+    //    Serial.print(", ");
+    //    Serial.print(Imu::getImu()->getCurrentSpeedX(), 6);
+    //    Serial.print(", ");
+    //    Serial.print(RomiPose.getCurVelocity(), 6);
+    //    Serial.print(", ");
+    //    Serial.print(fused_acc);
+    //    Serial.print(", ");
+    //    Serial.print(filtered_imu_acc, 6);
+    //    Serial.print(", ");
+    //    Serial.print(filtered_imu_acc_k, 6);
+    //    Serial.print(", ");
+    //    Serial.println(RomiPose.getCurAcceleration(), 6);
+    //filtered_imu_acc
+
     last_pose_print_time = time_now;
 
     act_on_commands();
@@ -293,10 +293,10 @@ void loop()
 }
 
 /**
- * Infers speed and position from the fused accelerations of Kinematics and IMU.
- * 
- * time_diff: the time in us that was spent with the acceleration values that we get from kinematics and IMU.
- */
+   Infers speed and position from the fused accelerations of Kinematics and IMU.
+
+   time_diff: the time in us that was spent with the acceleration values that we get from kinematics and IMU.
+*/
 void infer_position_from_fused_acc(long time_diff) {
   fused_acc = acc_filter.apply_filter(filtered_imu_acc, RomiPose.getCurAcceleration());
   fused_speed = fused_speed + (time_diff / US_IN_1_S) * fused_acc; //# converting acceleration to the speed change in m/s and adding to the speed
