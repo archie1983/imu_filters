@@ -547,8 +547,6 @@ void Imu::calibrateAllReadings() {
     delay((max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0) + 2);
   }
 
-
-
   /**
      Finding the middle value between the highest and lowest seen
   */
@@ -580,8 +578,6 @@ void Imu::calibrateAllReadings() {
     delay((max(gyro_refresh_time_us, acc_refresh_time_us) / 1000.0) + 2);
   }
 
-
-
   aXZero_max = aXZero_max;
   aXZero_min = aXZero_min;
 
@@ -589,8 +585,8 @@ void Imu::calibrateAllReadings() {
   Serial.println(aXZero_max);
   
   aXZero = 0; //# switch off the previous style calibration
-  //  aXZero_min = 210; //# overriding with experimental value
-  //  aXZero_max = 500; //# overriding with experimental value
+  aXZero_min = -310; //# overriding with experimental value
+  aXZero_max = 310; //# overriding with experimental value
 }
 
 /**

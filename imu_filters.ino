@@ -42,8 +42,8 @@ Gh_filter_c imu_acc_filter(0.5, 0.1, 0.2);
 /**
    Kalman filter to filter IMU values.
 */
-#define DT_COVARIANCE_RK 4.7e-3 // Estimation of the noise covariances (process)
-#define DT_COVARIANCE_QK 1e-5   // Estimation of the noise covariances (observation)
+#define DT_COVARIANCE_RK 4.7e-3 // Estimation of the noise covariances (observation)
+#define DT_COVARIANCE_QK 1e-5   // Estimation of the noise covariances (process)
 
 TrivialKalmanFilter<float> imu_acc_filter_k(DT_COVARIANCE_RK, DT_COVARIANCE_QK);
 
