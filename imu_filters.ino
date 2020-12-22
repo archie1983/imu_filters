@@ -81,6 +81,9 @@ float fused_pos = 0.; //# position inferred from fused_speed.
 float filtered_imu_acc = 0.; //# IMU acc filtered with G-H filter.
 float filtered_imu_acc_k = 0.; //# IMU acc filtered with Kalman filter
 
+float last_stop_distance = 0.; //# Where did we stop last time when we completed the last movement.
+byte movements_left_to_do = NUMBER_OF_MOVEMENTS; //# How many movements have we left to do to cover the overall distance?
+
 /*
    Note, this blocks the flow/timing of your code.  Use sparingly.
    Audio indicator to notify boot up sequence
@@ -179,17 +182,37 @@ bool kinematics_or_imu_data = false;
 
 void loop()
 {
-  /**
-     If we've been going straight for over a second, then stop
-  */
-  if (STATE == STATE_DRIVE_STRAIGHT && RomiPose.getPoseXmm() >= 500) {//abs(ghfilterPos) >= 0.5) {
+  if (STATE == STATE_DRIVE_STRAIGHT && ( //# If we're going straight AND
+    RomiPose.getPoseXmm() >= OVERALL_DISTANCE_TO_ACHIEVE || //# Have covered all the required distance altogether OR
+    RomiPose.getPoseXmm() - last_stop_distance >= OVERALL_DISTANCE_TO_ACHIEVE / NUMBER_OF_MOVEMENTS //# Have covered the required distance in the current movement
+    )) { //# Then we want to start braking
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
     Serial.println("STOP");
-  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 50) {
+  } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 50) { //# If we've been braking for more than 50ms, then we'll assum that we've stopped now.
     changeState(STATE_IDLE);
-    stop_motors(true);   // notify IMU
-    stop_fused_motion();
+
+    movements_left_to_do--;
+    last_stop_distance = RomiPose.getPoseXmm();
+    if (movements_left_to_do > 0) {
+      Imu::getImu()->setZeroAccAndSpeeds();
+
+      fused_acc = 0.;
+      fused_speed = 0.; //# speed inferred from fused_acc.
+      fused_pos = 0.; //# position inferred from fused_speed.
+      
+      filtered_imu_acc = 0.; //# IMU acc filtered with G-H filter.
+      filtered_imu_acc_k = 0.; //# IMU acc filtered with Kalman filter
+
+      imu_acc_filter_k.reset();
+      imu_acc_filter.init_params();
+      acc_filter.init_params();
+      changeState(STATE_DRIVE_STRAIGHT);
+      driveStraight(true);
+    } else {
+      stop_fused_motion();
+      stop_motors(true);   // notify IMU
+    }
   }
 
   /**
@@ -270,7 +293,12 @@ void loop()
     Serial.print(", ");
     Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::KALMAN_FILTERED));  // Kalman fiilter only on acc and then calc position
     Serial.print(", ");
-    Serial.println(RomiPose.getTravelledDistance_mm());  // Encoder count reported distance
+    Serial.print(RomiPose.getTravelledDistance_mm());  // Encoder count reported distance
+    Serial.print(", ");
+    Serial.print(RomiPose.getCurAcceleration(), 6);
+    Serial.print(", ");
+    Serial.println(Imu::getImu()->getCurrentAccelerationX(Imu::EstimateType::NO_FILTERED), 6);
+    
     //    Serial.print(", ");
     //    Serial.print(Imu::getImu()->getCurrentSpeedX(), 6);
     //    Serial.print(", ");

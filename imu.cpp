@@ -630,14 +630,11 @@ void Imu::setMotorRunning(boolean motor_running) {
   }
 }
 
+/**
+ * Sets pose to (0, 0)
+ */
 void Imu::setZeroPos(bool recalib) {
-  curAcceleration_X_nf = 0.;
-  curAcceleration_X_gh = 0.;
-  curAcceleration_X_k = 0.;
-
-  curSpeed_X_nf = 0.;
-  curSpeed_X_gh = 0.;
-  curSpeed_X_k = 0.;
+  setZeroAccAndSpeeds();
 
   posX_nf = 0.;
   posX_gh = 0.;
@@ -652,4 +649,17 @@ void Imu::setZeroPos(bool recalib) {
   if (recalib) {
     calibrateAllReadings();
   }
+}
+
+/**
+ * Resets the current speeds and accelerations to 0
+ */
+void Imu::setZeroAccAndSpeeds() {
+  curAcceleration_X_nf = 0.;
+  curAcceleration_X_gh = 0.;
+  curAcceleration_X_k = 0.;
+
+  curSpeed_X_nf = 0.;
+  curSpeed_X_gh = 0.;
+  curSpeed_X_k = 0.;
 }

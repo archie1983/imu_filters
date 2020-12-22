@@ -195,6 +195,11 @@ class Imu {
     void setZeroPos(bool recalib);
 
     /**
+     * Resets the current speeds and accelerations to 0
+     */
+    void setZeroAccAndSpeeds();
+     
+    /**
      * Returns number of microsedonds after which a new value will be available. We want to
      * update IMU position after this many us have elapsed.
      */

@@ -35,4 +35,7 @@
 #define TIME_TO_UPDATE_FILTERED_POSE 50000 //# We'll update our filter every this many microseconds
 #define TIME_TO_ESTIMATE_ACC_FROM_ENCODERS 50000 //# We'll estimate acceleration from encoders every this many microseconds
 #define TIME_TO_PRINT_POSE 100000 //# We'll print our poses every this many microseconds
+
+#define OVERALL_DISTANCE_TO_ACHIEVE 500 //# We want the robot to cover this many mm of distance altogether
+#define NUMBER_OF_MOVEMENTS 5 //# We want the robot to split the overall distance into this many equal chunks of distance.
 #endif
