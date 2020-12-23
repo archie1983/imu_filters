@@ -57,7 +57,27 @@ unsigned long behaviour_ts;// Use to track how long a behaviour has run.
 #define STATE_BRAKING         3
 int STATE = STATE_IDLE;  // System starts by being idle.
 
-float ghfilterPos = 0;
+/**
+   The value resulting from fusing the IMU acceleration and Kinematics calculated acceleration
+   with a G-H filter.
+*/
+float fused_acc = 0.;
+float fused_speed = 0.; //# speed inferred from fused_acc.
+
+float cur_ghfilterPos = 0; //# G-H filter fused estimates of position that come from IMU and from encoder counts - for the current iteration of the movement.
+float total_ghfilterPos = 0; //# G-H filter fused estimates of position that come from IMU and from encoder counts - for the total movement.
+
+float cur_fused_pos = 0; //# Position estimate from values that are acquired using a G-H filter to fuse IMU accelerations and acceleration estimates from encoder counts - for the current iteration of the movement.
+float total_fused_pos = 0; //# Position estimate from values that are acquired using a G-H filter to fuse IMU accelerations and acceleration estimates from encoder counts - for the total movement.
+
+float cur_imu_pos_nf = 0; //# Position estimate from IMU values (no filtering) - for the current iteration of the movement.
+float total_imu_pos_nf = 0; //# Position estimate from IMU values (no filtering) - for the total movement.
+
+float cur_imu_pos_gh = 0; //# Position estimate from IMU values (G-H filtered) - for the current iteration of the movement.
+float total_imu_pos_gh = 0; //# Position estimate from IMU values (G-H filtered) - for the total movement.
+
+float cur_imu_pos_kf = 0; //# Position estimate from IMU values (Kalman filtered) - for the current iteration of the movement.
+float total_imu_pos_kf = 0; //# Position estimate from IMU values (Kalman filtered) - for the total movement.
 
 /**
    Variables to ensure timed execution of various processes
@@ -69,14 +89,6 @@ unsigned long last_filter_update_time = 0;
 unsigned long last_pose_print_time = 0;
 
 unsigned long time_now = 0;
-
-/**
-   The value resulting from fusing the IMU acceleration and Kinematics calculated acceleration
-   with a G-H filter.
-*/
-float fused_acc = 0.;
-float fused_speed = 0.; //# speed inferred from fused_acc.
-float fused_pos = 0.; //# position inferred from fused_speed.
 
 float filtered_imu_acc = 0.; //# IMU acc filtered with G-H filter.
 float filtered_imu_acc_k = 0.; //# IMU acc filtered with Kalman filter
@@ -112,7 +124,12 @@ void stop_motors(bool notifyIMU) {
 */
 void zero_pose(bool recalibrate_acc) {
   stop_fused_motion();
-  fused_pos = 0.;
+  
+  total_ghfilterPos = 0;
+  total_fused_pos = 0;
+  total_imu_pos_nf = 0;
+  total_imu_pos_gh = 0;
+  total_imu_pos_kf = 0;
 
   // X = 0, Y = 0, Theta = 0
   RomiPose.setPose( 0, 0, 0 );
@@ -124,12 +141,27 @@ void zero_pose(bool recalibrate_acc) {
    Zeroes the fused speed and acceleration when the motion has stopped.
 */
 void stop_fused_motion() {
-  fused_speed = 0.;
+  Imu::getImu()->setZeroAccAndSpeeds();
+
   fused_acc = 0.;
-  acc_filter.init_params();
-  imu_acc_filter.init_params();
-  position_filter.init_params();
+  fused_speed = 0.; //# speed inferred from fused_acc.
+
+  /**
+   * Positions that were achieved during the last movement iteration.
+   */
+  cur_ghfilterPos = 0;
+  cur_fused_pos = 0;
+  cur_imu_pos_nf = 0;
+  cur_imu_pos_gh = 0;
+  cur_imu_pos_kf = 0;
+  
+  filtered_imu_acc = 0.; //# IMU acc filtered with G-H filter.
+  filtered_imu_acc_k = 0.; //# IMU acc filtered with Kalman filter
+
   imu_acc_filter_k.reset();
+  imu_acc_filter.init_params();
+  acc_filter.init_params();
+  position_filter.init_params();
 }
 
 void setup()
@@ -188,30 +220,39 @@ void loop()
     )) { //# Then we want to start braking
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
-    Serial.println("STOP");
+
+    if (RomiPose.getPoseXmm() >= OVERALL_DISTANCE_TO_ACHIEVE) {
+      Serial.println("FULLSTOP");
+    } else {
+      Serial.println("TEMPSTOP");
+    }
   } else if (STATE == STATE_BRAKING && millis() - behaviour_ts > 50) { //# If we've been braking for more than 50ms, then we'll assum that we've stopped now.
     changeState(STATE_IDLE);
 
     movements_left_to_do--;
     last_stop_distance = RomiPose.getPoseXmm();
+
+    total_ghfilterPos += cur_ghfilterPos; //# G-H filter fused estimates of position that come from IMU and from encoder counts - for the total movement.
+    total_fused_pos += cur_fused_pos * 1000; //# Position estimate from values that are acquired using a G-H filter to fuse IMU accelerations and acceleration estimates from encoder counts - for the total movement.
+    total_imu_pos_nf += cur_imu_pos_nf; //# Position estimate from IMU values (no filtering) - for the total movement.
+    total_imu_pos_gh += cur_imu_pos_gh; //# Position estimate from IMU values (G-H filtered) - for the total movement.
+    total_imu_pos_kf += cur_imu_pos_kf; //# Position estimate from IMU values (Kalman filtered) - for the total movement.
+
+    stop_fused_motion();
+
     if (movements_left_to_do > 0) {
-      Imu::getImu()->setZeroAccAndSpeeds();
-
-      fused_acc = 0.;
-      fused_speed = 0.; //# speed inferred from fused_acc.
-      fused_pos = 0.; //# position inferred from fused_speed.
-      
-      filtered_imu_acc = 0.; //# IMU acc filtered with G-H filter.
-      filtered_imu_acc_k = 0.; //# IMU acc filtered with Kalman filter
-
-      imu_acc_filter_k.reset();
-      imu_acc_filter.init_params();
-      acc_filter.init_params();
+      /**
+       * Starting the next iteration.
+       */
       changeState(STATE_DRIVE_STRAIGHT);
       driveStraight(true);
     } else {
-      stop_fused_motion();
+      /**
+       * Stopping for good
+       */
       stop_motors(true);   // notify IMU
+      last_stop_distance = 0;
+      movements_left_to_do = NUMBER_OF_MOVEMENTS;
     }
   }
 
@@ -248,20 +289,12 @@ void loop()
   */
   if (time_now - last_filter_update_time > TIME_TO_ESTIMATE_ACC_FROM_ENCODERS) {
     RomiPose.update(e0_count, e1_count);
-    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::NO_FILTERED), RomiPose.getPoseXmm());
+    cur_ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::NO_FILTERED), RomiPose.getPoseXmm()); //# G-H filter fused estimates of position that come from IMU and from encoder counts - for the current iteration of the movement.
 
     /**
        Now that we've updated both Kinematics and IMU, let's try to fuse their accelerations.
     */
     infer_position_from_fused_acc(time_now - last_filter_update_time);
-
-    //  if (kinematics_or_imu_data) {
-    //    ghfilterPos = position_filter.apply_filter(RomiPose.getPoseXmm());
-    //  } else {
-    //    ghfilterPos = position_filter.apply_filter(Imu::getImu()->getCurrentPosXmm());
-    //  }
-    //
-    //  kinematics_or_imu_data = !kinematics_or_imu_data;
     last_filter_update_time = time_now;
   }
 
@@ -281,17 +314,22 @@ void loop()
     //    Serial.print(", ");
     //    Serial.print(Imu::getImu()->getAxRawCompensated());
     //    Serial.print(", ");
+    
+    //cur_ghfilterPos = ...; //# G-H filter fused estimates of position that come from IMU and from encoder counts - for the current iteration of the movement.
+    //cur_fused_pos = ...; //# Position estimate from values that are acquired using a G-H filter to fuse IMU accelerations and acceleration estimates from encoder counts - for the current iteration of the movement.
+    cur_imu_pos_nf = Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::NO_FILTERED); //# Position estimate from IMU values (no filtering) - for the current iteration of the movement.
+    cur_imu_pos_gh = Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::GH_FILTERED); //# Position estimate from IMU values (G-H filtered) - for the current iteration of the movement.
+    cur_imu_pos_kf = Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::KALMAN_FILTERED); //# Position estimate from IMU values (Kalman filtered) - for the current iteration of the movement.
 
-
-    Serial.print(ghfilterPos);  // G-H filter of possition reported by acc and encoder
+    Serial.print(total_ghfilterPos + cur_ghfilterPos);  // G-H filter of possition reported by acc and encoder
     Serial.print(", ");
-    Serial.print(fused_pos * 1000);   // G-H filter of acceleration reported by acc and encoder and then cal position
+    Serial.print(total_fused_pos + cur_fused_pos * 1000);   // G-H filter of acceleration reported by acc and encoder and then cal position
     Serial.print(", ");
-    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::NO_FILTERED));  // RAW IMU reported positions with no filter
+    Serial.print(total_imu_pos_nf + cur_imu_pos_nf);  // RAW IMU reported positions with no filter
     Serial.print(", ");
-    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::GH_FILTERED));  // G-H filter only on acc and then calc position
+    Serial.print(total_imu_pos_gh + cur_imu_pos_gh);  // G-H filter only on acc and then calc position
     Serial.print(", ");
-    Serial.print(Imu::getImu()->getCurrentPosXmm(Imu::EstimateType::KALMAN_FILTERED));  // Kalman fiilter only on acc and then calc position
+    Serial.print(total_imu_pos_kf + cur_imu_pos_kf);  // Kalman fiilter only on acc and then calc position
     Serial.print(", ");
     Serial.print(RomiPose.getTravelledDistance_mm());  // Encoder count reported distance
     Serial.print(", ");
@@ -328,7 +366,7 @@ void loop()
 void infer_position_from_fused_acc(long time_diff) {
   fused_acc = acc_filter.apply_filter(filtered_imu_acc, RomiPose.getCurAcceleration());
   fused_speed = fused_speed + (time_diff / US_IN_1_S) * fused_acc; //# converting acceleration to the speed change in m/s and adding to the speed
-  fused_pos += (time_diff / US_IN_1_S) * fused_speed; //# converting position to m
+  cur_fused_pos += (time_diff / US_IN_1_S) * fused_speed; //# converting position to m
 }
 
 boolean driving_direction = true; //# TRUE for going forward and FALSE for going back.
