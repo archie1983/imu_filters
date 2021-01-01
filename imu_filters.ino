@@ -182,7 +182,7 @@ void loop()
   /**
      If we've been going straight for over a second, then stop
   */
-  if (STATE == STATE_DRIVE_STRAIGHT && RomiPose.getPoseXmm() >= 500) {//abs(ghfilterPos) >= 0.5) {
+  if (STATE == STATE_DRIVE_STRAIGHT && RomiPose.getPoseXmm() >= 100) {//abs(ghfilterPos) >= 0.5) {
     stop_motors(false);   //not notify IMU
     changeState(STATE_BRAKING);
     Serial.println("STOP");
